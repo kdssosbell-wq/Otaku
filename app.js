@@ -222,7 +222,8 @@ function bindEvents() {
   // 제보 폼 제출 → Firestore pending 컬렉션에 저장
   elements.submissionForm.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const formData  = new FormData(event.currentTarget);
+    const form     = event.currentTarget;          // await 전에 미리 저장
+    const formData = new FormData(form);
     const categories = formData.getAll("categories");
 
     if (!categories.length) {
@@ -247,7 +248,7 @@ function bindEvents() {
 
     try {
       await db.collection("pending").doc(entry.id).set(entry);
-      event.currentTarget.reset();
+      form.reset();                                // 저장해둔 참조 사용
       state.draftArea = state.activeArea;
       elements.submissionArea.value = state.draftArea;
       if (isAdminUnlocked) {
