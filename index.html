@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>오타쿠 지도</title>
+  <meta name="description" content="제일복권, 피규어, 가챠 파는 곳을 유저가 직접 제보하고, 관리자가 승인하면 지도와 매장 리스트에 반영되는 모바일 전용 프로토타입입니다.">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="오타쿠 지도">
+  <meta property="og:url" content="https://kdssosbell-wq.github.io/Otaku/">
+  <meta property="og:title" content="오타쿠 지도">
+  <meta property="og:description" content="제일복권, 피규어, 가챠 파는 곳을 유저가 직접 제보하고, 관리자가 승인하면 지도와 매장 리스트에 반영되는 모바일 전용 프로토타입입니다.">
+  <meta property="og:image" content="https://i.postimg.cc/xjKJqVh4/op-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="오타쿠 지도">
+  <meta name="twitter:description" content="제일복권, 피규어, 가챠 파는 곳을 유저가 직접 제보하고, 관리자가 승인하면 지도와 매장 리스트에 반영되는 모바일 전용 프로토타입입니다.">
+  <meta name="twitter:image" content="https://i.postimg.cc/xjKJqVh4/op-image.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Pretendard:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="hero">
+      <div class="hero__badge">Otaku Spot Map</div>
+      <h1>오타쿠 지도</h1>
+      <p>제일복권, 피규어, 가챠 파는 곳을 유저가 직접 제보하고, 관리자가 승인하면 지도와 매장 리스트에 반영되는 모바일 전용 프로토타입입니다.</p>
+    </header>
+
+    <main class="phone-frame">
+      <section class="panel panel--explore active" data-panel="explore">
+        <div class="search-card">
+          <label class="sr-only" for="searchInput">매장 검색</label>
+          <input id="searchInput" type="search" placeholder="매장명, 지역명 입력">
+          <button class="ghost-btn" id="searchButton" type="button">검색</button>
+        </div>
+
+        <div class="chip-row" id="categoryFilters"></div>
+        <section class="map-card">
+          <div class="map-card__header">
+            <div>
+              <p class="eyebrow">Custom Otaku Map</p>
+              <h2>지역별 커스텀 지도</h2>
+            </div>
+            <button class="icon-btn" id="toggleViewButton" type="button">리스트 보기</button>
+          </div>
+
+          <p class="map-status" id="mapStatus">제보자가 직접 찍은 위치를 기반으로 핀이 표시됩니다.</p>
+          <div class="map-area-switch" id="areaFilters"></div>
+
+          <div class="map-stage" id="mapStage" aria-label="커스텀 지역 지도"></div>
+        </section>
+
+        <section class="list-card">
+          <div class="list-card__header">
+            <div>
+              <p class="eyebrow">Approved Spots</p>
+              <h2>승인된 매장</h2>
+            </div>
+            <span class="pill" id="approvedCount">0곳</span>
+          </div>
+          <div class="spot-list" id="approvedList"></div>
+        </section>
+      </section>
+
+      <section class="panel panel--submit" data-panel="submit">
+        <div class="section-header">
+          <p class="eyebrow">Community Submission</p>
+          <h2>매장 제보하기</h2>
+          <p>지역을 고르고 지도 위를 눌러 위치를 찍어 주세요. 관리자가 승인하면 같은 위치에 매장이 표시됩니다.</p>
+        </div>
+
+        <form class="submission-form" id="submissionForm">
+          <label>
+            매장명
+            <input name="name" type="text" maxlength="40" required placeholder="예: 아키바샵 홍대점">
+          </label>
+
+          <label>
+            지역
+            <select name="area" id="submissionArea" required></select>
+          </label>
+
+          <label>
+            주소
+            <input name="address" type="text" maxlength="80" required placeholder="예: 서울 마포구 와우산로29길 48-14">
+          </label>
+
+          <label>
+            취급 카테고리
+            <div class="checkbox-grid" id="categoryCheckboxes"></div>
+          </label>
+
+          <div class="pin-card">
+            <div class="pin-card__header">
+              <div>
+                <p class="eyebrow">Pin Your Spot</p>
+                <h3>위치 찍기</h3>
+              </div>
+              <span class="pill" id="pinPreviewLabel">위치를 선택해 주세요</span>
+            </div>
+            <div class="picker-map" id="pickerMap" aria-label="제보 위치 선택 지도"></div>
+            <input name="pinX" id="pinXInput" type="hidden" required>
+            <input name="pinY" id="pinYInput" type="hidden" required>
+          </div>
+
+          <label>
+            한줄 설명
+            <textarea name="description" rows="4" maxlength="180" required placeholder="예: 제일복권 종류가 많고 캡슐 가챠 라인업이 자주 바뀌는 편"></textarea>
+          </label>
+
+          <label>
+            운영 정보
+            <input name="hours" type="text" maxlength="30" placeholder="예: 12:00 - 21:00">
+          </label>
+
+          <label>
+            제보자 닉네임
+            <input name="author" type="text" maxlength="20" placeholder="예: 원덕후42">
+          </label>
+
+          <button class="primary-btn" type="submit">승인 요청 보내기</button>
+        </form>
+      </section>
+
+      <section class="panel panel--admin" data-panel="admin">
+        <div class="section-header">
+          <p class="eyebrow">Admin Review</p>
+          <h2>승인 대기함</h2>
+          <p>관리자는 유저가 찍은 위치와 설명을 보고 승인 또는 반려할 수 있습니다.</p>
+        </div>
+
+        <div class="admin-summary">
+          <article>
+            <span>승인 대기</span>
+            <strong id="pendingCount">0</strong>
+          </article>
+          <article>
+            <span>승인 완료</span>
+            <strong id="approvedTotal">0</strong>
+          </article>
+        </div>
+
+        <div class="admin-list" id="pendingList"></div>
+      </section>
+    </main>
+
+    <nav class="bottom-nav" aria-label="하단 탭">
+      <button class="bottom-nav__item active" data-tab-target="explore" type="button">
+        <span>지도</span>
+      </button>
+      <button class="bottom-nav__item" data-tab-target="submit" type="button">
+        <span>제보</span>
+      </button>
+      <button c
