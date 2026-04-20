@@ -1,17 +1,26 @@
-// SHA-256("971012") — 브라우저 SubtleCrypto로 검증
+// ── Firebase 설정 ──────────────────────────────────────────────────────────
+// Firebase Console에서 복사한 값을 아래에 붙여넣으세요
+const firebaseConfig = {
+  apiKey:            "AIzaSyDXHbzcKG9hFFLTHWbwWai0nemhTNJaVOc",
+  authDomain:        "otaku-map-29d8b.firebaseapp.com",
+  projectId:         "otaku-map-29d8b",
+  storageBucket:     "otaku-map-29d8b.firebasestorage.app",
+  messagingSenderId: "227268562859",
+  appId:             "1:227268562859:web:ab842e7c9e3c5763628cee",
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// ── 관리자 비밀번호 (SHA-256 암호화) ──────────────────────────────────────
 const ADMIN_HASH = "46de2f845bde8d171642382c630150d28c844756494c77b6a24c886afb6382da";
 let isAdminUnlocked = false;
 
-const STORAGE_KEYS = {
-  approved: "otaku-map-approved",
-  pending: "otaku-map-pending",
-};
-
+// ── 카테고리 & 지역 정의 ──────────────────────────────────────────────────
 const CATEGORIES = [
-  { id: "kuji", label: "제일복권" },
-  { id: "figure", label: "피규어" },
-  { id: "gacha", label: "가챠" },
-  { id: "goods", label: "굿즈샵" },
+  { id: "kuji",   label: "제일복권" },
+  { id: "figure", label: "피규어"   },
+  { id: "gacha",  label: "가챠"     },
+  { id: "goods",  label: "굿즈샵"   },
 ];
 
 const AREAS = [
@@ -19,25 +28,19 @@ const AREAS = [
     id: "hongdae",
     label: "홍대",
     defaultFocus: true,
-    shapes: [
-      { top: "16%", left: "12%", width: "34%", height: "24%" },
-    ],
+    shapes: [{ top: "16%", left: "12%", width: "34%", height: "24%" }],
     labelPos: { top: "22%", left: "18%" },
   },
   {
     id: "hapjeong",
     label: "합정",
-    shapes: [
-      { top: "20%", left: "56%", width: "26%", height: "24%" },
-    ],
+    shapes: [{ top: "20%", left: "56%", width: "26%", height: "24%" }],
     labelPos: { top: "28%", left: "61%" },
   },
   {
     id: "geondae",
     label: "건대",
-    shapes: [
-      { top: "60%", left: "58%", width: "24%", height: "18%" },
-    ],
+    shapes: [{ top: "60%", left: "58%", width: "24%", height: "18%" }],
     labelPos: { top: "68%", left: "62%" },
   },
   {
@@ -72,48 +75,50 @@ const AREAS = [
   },
 ];
 
-
+// ── 앱 상태 ───────────────────────────────────────────────────────────────
 const state = {
-  activeTab: "explore",
+  activeTab:      "explore",
   activeCategory: "all",
-  activeArea: AREAS.find((area) => area.defaultFocus)?.id || AREAS[0].id,
-  query: "",
-  viewMode: "map",
-  approved: loadCollection(STORAGE_KEYS.approved, []),
-  pending: loadCollection(STORAGE_KEYS.pending, []),
-  draftArea: AREAS.find((area) => area.defaultFocus)?.id || AREAS[0].id,
-  get draftPin() { return getAreaPin(this.draftArea); },
+  activeArea:     AREAS.find((a) => a.defaultFocus)?.id || AREAS[0].id,
+  query:          "",
+  viewMode:       "map",
+  approved:       [],   // Firestore에서 실시간으로 채워짐
+  pending:        [],   // Firestore에서 실시간으로 채워짐
+  draftArea:      AREAS.find((a) => a.defaultFocus)?.id || AREAS[0].id,
+  get draftPin()  { return getAreaPin(this.draftArea); },
 };
 
+// ── DOM 요소 참조 ─────────────────────────────────────────────────────────
 const elements = {
-  tabs: [...document.querySelectorAll("[data-tab-target]")],
-  panels: [...document.querySelectorAll("[data-panel]")],
-  categoryFilters: document.querySelector("#categoryFilters"),
-  areaFilters: document.querySelector("#areaFilters"),
+  tabs:               [...document.querySelectorAll("[data-tab-target]")],
+  panels:             [...document.querySelectorAll("[data-panel]")],
+  categoryFilters:    document.querySelector("#categoryFilters"),
+  areaFilters:        document.querySelector("#areaFilters"),
   categoryCheckboxes: document.querySelector("#categoryCheckboxes"),
-  approvedList: document.querySelector("#approvedList"),
-  approvedCount: document.querySelector("#approvedCount"),
-  approvedTotal: document.querySelector("#approvedTotal"),
-  pendingCount: document.querySelector("#pendingCount"),
-  pendingList: document.querySelector("#pendingList"),
-  mapStage: document.querySelector("#mapStage"),
-  mapStatus: document.querySelector("#mapStatus"),
-  searchInput: document.querySelector("#searchInput"),
-  toggleViewButton: document.querySelector("#toggleViewButton"),
-  searchButton: document.querySelector("#searchButton"),
-  submissionForm: document.querySelector("#submissionForm"),
-  submissionArea: document.querySelector("#submissionArea"),
-  spotCardTemplate: document.querySelector("#spotCardTemplate"),
-  pendingCardTemplate: document.querySelector("#pendingCardTemplate"),
-  adminModalOverlay: document.querySelector("#adminModalOverlay"),
-  adminPasswordForm: document.querySelector("#adminPasswordForm"),
+  approvedList:       document.querySelector("#approvedList"),
+  approvedCount:      document.querySelector("#approvedCount"),
+  approvedTotal:      document.querySelector("#approvedTotal"),
+  pendingCount:       document.querySelector("#pendingCount"),
+  pendingList:        document.querySelector("#pendingList"),
+  mapStage:           document.querySelector("#mapStage"),
+  mapStatus:          document.querySelector("#mapStatus"),
+  searchInput:        document.querySelector("#searchInput"),
+  toggleViewButton:   document.querySelector("#toggleViewButton"),
+  searchButton:       document.querySelector("#searchButton"),
+  submissionForm:     document.querySelector("#submissionForm"),
+  submissionArea:     document.querySelector("#submissionArea"),
+  spotCardTemplate:   document.querySelector("#spotCardTemplate"),
+  pendingCardTemplate:document.querySelector("#pendingCardTemplate"),
+  adminModalOverlay:  document.querySelector("#adminModalOverlay"),
+  adminPasswordForm:  document.querySelector("#adminPasswordForm"),
   adminPasswordInput: document.querySelector("#adminPasswordInput"),
   adminPasswordError: document.querySelector("#adminPasswordError"),
-  adminModalCancel: document.querySelector("#adminModalCancel"),
+  adminModalCancel:   document.querySelector("#adminModalCancel"),
 };
 
 bootstrap();
 
+// ── 초기화 ────────────────────────────────────────────────────────────────
 function bootstrap() {
   renderCategoryFilters();
   renderAreaFilters();
@@ -121,9 +126,35 @@ function bootstrap() {
   renderAreaOptions();
   bindEvents();
   render();
+  setupFirestoreListeners(); // Firestore 실시간 연결
 }
 
+// ── Firestore 실시간 리스너 ───────────────────────────────────────────────
+function setupFirestoreListeners() {
+  // 승인된 매장: 실시간 동기화
+  db.collection("approved").onSnapshot((snapshot) => {
+    state.approved = snapshot.docs.map((doc) => doc.data());
+    renderApproved();
+  }, (error) => {
+    console.error("approved 리스너 오류:", error);
+  });
+
+  // 제보 대기 목록: 실시간 동기화
+  db.collection("pending")
+    .orderBy("submittedAt", "desc")
+    .onSnapshot((snapshot) => {
+      state.pending = snapshot.docs.map((doc) => doc.data());
+      elements.pendingCount.textContent = String(state.pending.length);
+      elements.approvedTotal.textContent = String(state.approved.length);
+      renderPending();
+    }, (error) => {
+      console.error("pending 리스너 오류:", error);
+    });
+}
+
+// ── 이벤트 바인딩 ─────────────────────────────────────────────────────────
 function bindEvents() {
+  // 탭 전환 (관리 탭은 비밀번호 확인)
   elements.tabs.forEach((button) => {
     button.addEventListener("click", () => {
       const target = button.dataset.tabTarget;
@@ -136,11 +167,10 @@ function bindEvents() {
     });
   });
 
-  // 관리자 모달 이벤트
+  // 관리자 비밀번호 모달
   elements.adminPasswordForm.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const input = elements.adminPasswordInput.value;
-    const matched = await verifyAdminPassword(input);
+    const matched = await verifyAdminPassword(elements.adminPasswordInput.value);
     if (matched) {
       isAdminUnlocked = true;
       closeAdminModal();
@@ -159,47 +189,40 @@ function bindEvents() {
 
   elements.adminModalCancel.addEventListener("click", closeAdminModal);
 
-  elements.adminModalOverlay.addEventListener("click", (event) => {
-    if (event.target === elements.adminModalOverlay) closeAdminModal();
+  elements.adminModalOverlay.addEventListener("click", (e) => {
+    if (e.target === elements.adminModalOverlay) closeAdminModal();
   });
 
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && elements.adminModalOverlay.classList.contains("open")) {
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && elements.adminModalOverlay.classList.contains("open")) {
       closeAdminModal();
     }
   });
 
-  // 입력창은 Enter 키로도 검색 트리거 — 라이브 검색 없음
-  elements.searchInput.addEventListener("keydown", (event) => {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      executeSearch();
-    }
+  // 검색
+  elements.searchInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); executeSearch(); }
   });
-  // 입력값을 지우면(검색창의 x 버튼 등) 결과도 원래대로 되돌림
   elements.searchInput.addEventListener("search", () => {
-    if (!elements.searchInput.value) {
-      state.query = "";
-      renderApproved();
-    }
+    if (!elements.searchInput.value) { state.query = ""; renderApproved(); }
   });
+  elements.searchButton.addEventListener("click", executeSearch);
 
+  // 지도 ↔ 리스트 토글
   elements.toggleViewButton.addEventListener("click", () => {
     state.viewMode = state.viewMode === "map" ? "list" : "map";
     renderApproved();
   });
 
-  elements.searchButton.addEventListener("click", () => {
-    executeSearch();
+  // 제보 폼 지역 변경
+  elements.submissionArea.addEventListener("change", (e) => {
+    state.draftArea = e.target.value;
   });
 
-  elements.submissionArea.addEventListener("change", (event) => {
-    state.draftArea = event.target.value;
-  });
-
-  elements.submissionForm.addEventListener("submit", (event) => {
+  // 제보 폼 제출 → Firestore pending 컬렉션에 저장
+  elements.submissionForm.addEventListener("submit", async (event) => {
     event.preventDefault();
-    const formData = new FormData(event.currentTarget);
+    const formData  = new FormData(event.currentTarget);
     const categories = formData.getAll("categories");
 
     if (!categories.length) {
@@ -209,33 +232,39 @@ function bindEvents() {
 
     const selectedArea = formData.get("area");
     const entry = {
-      id: createId(),
-      name: formData.get("name"),
-      area: selectedArea,
-      address: formData.get("address"),
+      id:          createId(),
+      name:        formData.get("name"),
+      area:        selectedArea,
+      address:     formData.get("address"),
       categories,
       description: formData.get("description"),
-      hours: formData.get("hours") || "정보 제보 필요",
-      author: formData.get("author") || "익명 덕후",
-      distance: areaLabel(selectedArea),
-      pin: getAreaPin(selectedArea),
+      hours:       formData.get("hours") || "정보 제보 필요",
+      author:      formData.get("author") || "익명 덕후",
+      distance:    areaLabel(selectedArea),
+      pin:         getAreaPin(selectedArea),
+      submittedAt: Date.now(),
     };
 
-    state.pending = [entry, ...state.pending];
-    saveCollection(STORAGE_KEYS.pending, state.pending);
-    event.currentTarget.reset();
-    state.draftArea = state.activeArea;
-    elements.submissionArea.value = state.draftArea;
-    if (isAdminUnlocked) {
-      state.activeTab = "admin";
-    } else {
-      state.activeTab = "explore";
-      window.alert("제보가 접수됐습니다! 관리자 승인 후 지도에 표시됩니다.");
+    try {
+      await db.collection("pending").doc(entry.id).set(entry);
+      event.currentTarget.reset();
+      state.draftArea = state.activeArea;
+      elements.submissionArea.value = state.draftArea;
+      if (isAdminUnlocked) {
+        state.activeTab = "admin";
+      } else {
+        state.activeTab = "explore";
+        window.alert("제보가 접수됐습니다! 관리자 승인 후 지도에 표시됩니다.");
+      }
+      renderPanels();
+    } catch (err) {
+      console.error("제보 저장 실패:", err);
+      window.alert("저장 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.");
     }
-    render();
   });
 }
 
+// ── 렌더링 함수들 ─────────────────────────────────────────────────────────
 function render() {
   renderPanels();
   renderApproved();
@@ -246,11 +275,9 @@ function renderPanels() {
   if (!isAdminUnlocked && state.activeTab === "admin") {
     state.activeTab = "explore";
   }
-
-  elements.tabs.forEach((button) => {
-    button.classList.toggle("active", button.dataset.tabTarget === state.activeTab);
+  elements.tabs.forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.tabTarget === state.activeTab);
   });
-
   elements.panels.forEach((panel) => {
     panel.classList.toggle("active", panel.dataset.panel === state.activeTab);
   });
@@ -259,63 +286,50 @@ function renderPanels() {
 function renderCategoryFilters() {
   const items = [{ id: "all", label: "전체" }, ...CATEGORIES];
   elements.categoryFilters.innerHTML = "";
-
-  items.forEach((category) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = `chip${category.id === state.activeCategory ? " active" : ""}`;
-    button.textContent = category.label;
-    button.addEventListener("click", () => {
-      state.activeCategory = category.id;
+  items.forEach((cat) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = `chip${cat.id === state.activeCategory ? " active" : ""}`;
+    btn.textContent = cat.label;
+    btn.addEventListener("click", () => {
+      state.activeCategory = cat.id;
       renderCategoryFilters();
       renderApproved();
     });
-    elements.categoryFilters.appendChild(button);
+    elements.categoryFilters.appendChild(btn);
   });
 }
 
 function renderAreaFilters() {
   elements.areaFilters.innerHTML = "";
-
-  let activeButton = null;
-
+  let activeBtn = null;
   AREAS.forEach((area) => {
-    const button = document.createElement("button");
-    button.type = "button";
+    const btn = document.createElement("button");
+    btn.type = "button";
     const isActive = area.id === state.activeArea;
-    button.className = `chip${isActive ? " active" : ""}`;
-    button.textContent = area.label;
-    button.addEventListener("click", () => {
+    btn.className = `chip${isActive ? " active" : ""}`;
+    btn.textContent = area.label;
+    btn.addEventListener("click", () => {
       state.activeArea = area.id;
       renderAreaFilters();
       renderApproved();
     });
-    elements.areaFilters.appendChild(button);
-    if (isActive) activeButton = button;
+    elements.areaFilters.appendChild(btn);
+    if (isActive) activeBtn = btn;
   });
-
-  // 활성 지역 칩을 가로 스크롤 중앙으로 부드럽게 이동
-  if (activeButton) {
+  if (activeBtn) {
     requestAnimationFrame(() => {
-      activeButton.scrollIntoView({
-        behavior: "smooth",
-        inline: "center",
-        block: "nearest",
-      });
+      activeBtn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
     });
   }
 }
 
 function renderCategoryCheckboxes() {
   elements.categoryCheckboxes.innerHTML = "";
-
-  CATEGORIES.forEach((category) => {
+  CATEGORIES.forEach((cat) => {
     const label = document.createElement("label");
     label.className = "checkbox-item";
-    label.innerHTML = `
-      <input type="checkbox" name="categories" value="${category.id}">
-      <span>${category.label}</span>
-    `;
+    label.innerHTML = `<input type="checkbox" name="categories" value="${cat.id}"><span>${cat.label}</span>`;
     elements.categoryCheckboxes.appendChild(label);
   });
 }
@@ -334,15 +348,13 @@ function renderAreaOptions() {
 function renderApproved() {
   const filtered = getFilteredApproved();
   elements.approvedList.innerHTML = "";
-  elements.approvedCount.textContent = `${filtered.length}곳`;
-  elements.approvedTotal.textContent = String(state.approved.length);
+  elements.approvedCount.textContent  = `${filtered.length}곳`;
+  elements.approvedTotal.textContent  = String(state.approved.length);
   elements.toggleViewButton.textContent = state.viewMode === "map" ? "리스트 보기" : "지도 보기";
   elements.mapStage.style.display = state.viewMode === "map" ? "block" : "none";
   elements.mapStatus.textContent = `${areaLabel(state.activeArea)} 지역 커스텀 지도에서 ${filtered.length}개 매장을 보고 있습니다.`;
 
-  filtered.forEach((spot) => {
-    elements.approvedList.appendChild(createSpotCard(spot));
-  });
+  filtered.forEach((spot) => elements.approvedList.appendChild(createSpotCard(spot)));
 
   if (!filtered.length) {
     const empty = document.createElement("article");
@@ -374,37 +386,24 @@ function renderPending() {
     return;
   }
 
-  state.pending.forEach((entry) => {
-    elements.pendingList.appendChild(createPendingCard(entry));
-  });
-}
-
-function getAreaPin(areaId) {
-  const area = AREAS.find((item) => item.id === areaId);
-  if (!area) return { x: 50, y: 50 };
-  return {
-    x: parseFloat(area.labelPos.left),
-    y: parseFloat(area.labelPos.top),
-  };
+  state.pending.forEach((entry) => elements.pendingList.appendChild(createPendingCard(entry)));
 }
 
 function renderAreaMap(container, areaId, spots, draftPin = null) {
   container.innerHTML = "";
-  const area = AREAS.find((item) => item.id === areaId) || AREAS[0];
-  // 탐색 지도(mapStage)에서는 지역 라벨을 클릭해 활성 지역을 바꿀 수 있게 버튼으로 렌더
+  const area = AREAS.find((a) => a.id === areaId) || AREAS[0];
   const isExploreMap = container === elements.mapStage;
 
   AREAS.forEach((item) => {
-    // 활성 지역의 shapes만 렌더링 — 비활성 지역은 레이블만 표시
     if (item.id === area.id) {
       item.shapes.forEach((shape) => {
-        const shapeNode = document.createElement("div");
-        shapeNode.className = "district-shape";
-        shapeNode.style.top = shape.top;
-        shapeNode.style.left = shape.left;
-        shapeNode.style.width = shape.width;
-        shapeNode.style.height = shape.height;
-        container.appendChild(shapeNode);
+        const node = document.createElement("div");
+        node.className = "district-shape";
+        node.style.top    = shape.top;
+        node.style.left   = shape.left;
+        node.style.width  = shape.width;
+        node.style.height = shape.height;
+        container.appendChild(node);
       });
     }
 
@@ -412,17 +411,16 @@ function renderAreaMap(container, areaId, spots, draftPin = null) {
     const label = document.createElement(isExploreMap ? "button" : "div");
     label.className = `district-label${isActive ? " active" : ""}`;
     label.textContent = item.label;
-    label.style.top = item.labelPos.top;
-    label.style.left = item.labelPos.left;
-    if (!isActive) {
-      label.style.opacity = "0.7";
-    }
+    label.style.top   = item.labelPos.top;
+    label.style.left  = item.labelPos.left;
+    if (!isActive) label.style.opacity = "0.7";
+
     if (isExploreMap) {
       label.type = "button";
       label.setAttribute("aria-label", `${item.label} 지역 선택`);
       label.setAttribute("aria-pressed", isActive ? "true" : "false");
-      label.addEventListener("click", (event) => {
-        event.stopPropagation();
+      label.addEventListener("click", (e) => {
+        e.stopPropagation();
         if (state.activeArea === item.id) return;
         state.activeArea = item.id;
         renderAreaFilters();
@@ -438,7 +436,7 @@ function renderAreaMap(container, areaId, spots, draftPin = null) {
     pin.type = "button";
     pin.className = "map-pin";
     pin.style.left = `${spot.pin.x}%`;
-    pin.style.top = `${spot.pin.y}%`;
+    pin.style.top  = `${spot.pin.y}%`;
     pin.setAttribute("aria-label", `${spot.name} 위치`);
     pin.addEventListener("click", () => focusSpotCard(spot.name));
     container.appendChild(pin);
@@ -448,20 +446,17 @@ function renderAreaMap(container, areaId, spots, draftPin = null) {
     const pin = document.createElement("div");
     pin.className = "picker-pin";
     pin.style.left = `${draftPin.x}%`;
-    pin.style.top = `${draftPin.y}%`;
+    pin.style.top  = `${draftPin.y}%`;
     container.appendChild(pin);
   }
-
 }
 
+// ── 검색 & 필터 ───────────────────────────────────────────────────────────
 function getFilteredApproved() {
   return state.approved.filter((spot) => {
-    const matchesArea = spot.area === state.activeArea;
-    const matchesCategory =
-      state.activeCategory === "all" || spot.categories.includes(state.activeCategory);
-    const haystack = [spot.name, areaLabel(spot.area), spot.address, spot.description]
-      .join(" ")
-      .toLowerCase();
+    const matchesArea     = spot.area === state.activeArea;
+    const matchesCategory = state.activeCategory === "all" || spot.categories.includes(state.activeCategory);
+    const haystack = [spot.name, areaLabel(spot.area), spot.address, spot.description].join(" ").toLowerCase();
     const matchesQuery = !state.query || haystack.includes(state.query);
     return matchesArea && matchesCategory && matchesQuery;
   });
@@ -469,20 +464,11 @@ function getFilteredApproved() {
 
 function executeSearch() {
   const raw = (elements.searchInput.value || "").trim();
+  if (!raw) { state.query = ""; renderApproved(); return; }
 
-  if (!raw) {
-    state.query = "";
-    renderApproved();
-    return;
-  }
-
-  // 지역명이 입력되면 해당 지역으로 이동하고 입력창을 비움
   const lower = raw.toLowerCase();
   const matchedArea = AREAS.find(
-    (area) =>
-      area.label === raw ||
-      lower === area.id.toLowerCase() ||
-      raw.includes(area.label)
+    (a) => a.label === raw || lower === a.id.toLowerCase() || raw.includes(a.label)
   );
   if (matchedArea) {
     state.activeArea = matchedArea.id;
@@ -492,122 +478,106 @@ function executeSearch() {
     renderApproved();
     return;
   }
-
-  // 매장명 / 주소 / 설명 자유 텍스트 검색
   state.query = lower;
   renderApproved();
 }
 
+// ── 카드 생성 ─────────────────────────────────────────────────────────────
 function createSpotCard(spot) {
-  const fragment = elements.spotCardTemplate.content.cloneNode(true);
-  fragment.querySelector("h3").textContent = spot.name;
-  fragment.querySelector(".spot-card__meta").textContent = `${areaLabel(spot.area)} · ${spot.address}`;
-  fragment.querySelector(".pill").textContent = spot.distance;
-  fragment.querySelector(".spot-card__desc").textContent = spot.description;
-  fragment.querySelector(".spot-card__hours").textContent = `운영 ${spot.hours}`;
-  fragment.querySelector(".spot-card__author").textContent = `등록 ${spot.author}`;
-
-  const tags = fragment.querySelector(".tag-row");
-  spot.categories.forEach((categoryId) => tags.appendChild(createTag(categoryId)));
-  return fragment;
+  const f = elements.spotCardTemplate.content.cloneNode(true);
+  f.querySelector("h3").textContent              = spot.name;
+  f.querySelector(".spot-card__meta").textContent = `${areaLabel(spot.area)} · ${spot.address}`;
+  f.querySelector(".pill").textContent            = spot.distance;
+  f.querySelector(".spot-card__desc").textContent = spot.description;
+  f.querySelector(".spot-card__hours").textContent = `운영 ${spot.hours}`;
+  f.querySelector(".spot-card__author").textContent = `등록 ${spot.author}`;
+  const tags = f.querySelector(".tag-row");
+  spot.categories.forEach((id) => tags.appendChild(createTag(id)));
+  return f;
 }
 
 function createPendingCard(entry) {
-  const fragment = elements.pendingCardTemplate.content.cloneNode(true);
-  fragment.querySelector("h3").textContent = entry.name;
-  fragment.querySelector(".pending-card__meta").textContent = `${areaLabel(entry.area)} · ${entry.address}`;
-  fragment.querySelector(".pending-card__desc").textContent = entry.description;
-  fragment.querySelector(".pending-card__coords").textContent = `핀 위치 ${entry.pin.x}% / ${entry.pin.y}%`;
-
-  const tags = fragment.querySelector(".tag-row");
-  entry.categories.forEach((categoryId) => tags.appendChild(createTag(categoryId)));
-
-  fragment.querySelector(".js-approve").addEventListener("click", () => approveEntry(entry.id));
-  fragment.querySelector(".js-reject").addEventListener("click", () => rejectEntry(entry.id));
-  return fragment;
+  const f = elements.pendingCardTemplate.content.cloneNode(true);
+  f.querySelector("h3").textContent                  = entry.name;
+  f.querySelector(".pending-card__meta").textContent  = `${areaLabel(entry.area)} · ${entry.address}`;
+  f.querySelector(".pending-card__desc").textContent  = entry.description;
+  f.querySelector(".pending-card__coords").textContent = `지역: ${areaLabel(entry.area)}`;
+  const tags = f.querySelector(".tag-row");
+  entry.categories.forEach((id) => tags.appendChild(createTag(id)));
+  f.querySelector(".js-approve").addEventListener("click", () => approveEntry(entry.id));
+  f.querySelector(".js-reject").addEventListener("click",  () => rejectEntry(entry.id));
+  return f;
 }
 
 function createTag(categoryId) {
   const tag = document.createElement("span");
-  const category = CATEGORIES.find((item) => item.id === categoryId);
+  const cat = CATEGORIES.find((c) => c.id === categoryId);
   tag.className = "tag";
-  tag.textContent = category ? category.label : categoryId;
+  tag.textContent = cat ? cat.label : categoryId;
   return tag;
 }
 
-function approveEntry(entryId) {
+// ── 승인 / 반려 (Firestore) ───────────────────────────────────────────────
+async function approveEntry(entryId) {
   const match = state.pending.find((item) => item.id === entryId);
   if (!match) return;
 
-  state.pending = state.pending.filter((item) => item.id !== entryId);
-  state.approved = [{ ...match, distance: areaLabel(match.area) }, ...state.approved];
-  saveCollection(STORAGE_KEYS.pending, state.pending);
-  saveCollection(STORAGE_KEYS.approved, state.approved);
-  state.activeArea = match.area;
-  state.activeTab = "explore";
-  renderAreaFilters();
-  render();
+  try {
+    const batch = db.batch();
+    batch.delete(db.collection("pending").doc(entryId));
+    batch.set(db.collection("approved").doc(entryId), {
+      ...match,
+      distance: areaLabel(match.area),
+    });
+    await batch.commit();
+
+    state.activeArea = match.area;
+    state.activeTab  = "explore";
+    renderAreaFilters();
+    renderPanels();
+  } catch (err) {
+    console.error("승인 실패:", err);
+    window.alert("승인 중 오류가 발생했습니다.");
+  }
 }
 
-function rejectEntry(entryId) {
-  state.pending = state.pending.filter((item) => item.id !== entryId);
-  saveCollection(STORAGE_KEYS.pending, state.pending);
-  renderPending();
+async function rejectEntry(entryId) {
+  try {
+    await db.collection("pending").doc(entryId).delete();
+  } catch (err) {
+    console.error("반려 실패:", err);
+    window.alert("반려 중 오류가 발생했습니다.");
+  }
 }
 
+// ── 유틸리티 ──────────────────────────────────────────────────────────────
 function focusSpotCard(name) {
   const card = [...elements.approvedList.children].find(
     (node) => node.querySelector("h3")?.textContent === name
   );
   if (!card) return;
-
   card.scrollIntoView({ behavior: "smooth", block: "center" });
   card.animate(
-    [
-      { transform: "scale(1)" },
-      { transform: "scale(1.02)" },
-      { transform: "scale(1)" },
-    ],
+    [{ transform: "scale(1)" }, { transform: "scale(1.02)" }, { transform: "scale(1)" }],
     { duration: 450 }
   );
 }
 
+function getAreaPin(areaId) {
+  const area = AREAS.find((a) => a.id === areaId);
+  if (!area) return { x: 50, y: 50 };
+  return { x: parseFloat(area.labelPos.left), y: parseFloat(area.labelPos.top) };
+}
+
 function areaLabel(areaId) {
-  return AREAS.find((item) => item.id === areaId)?.label || areaId;
-}
-
-function loadCollection(key, fallback) {
-  const raw = localStorage.getItem(key);
-  if (!raw) {
-    localStorage.setItem(key, JSON.stringify(fallback));
-    return cloneData(fallback);
-  }
-
-  try {
-    return JSON.parse(raw);
-  } catch (error) {
-    localStorage.setItem(key, JSON.stringify(fallback));
-    return cloneData(fallback);
-  }
-}
-
-function saveCollection(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
-}
-
-function cloneData(data) {
-  return JSON.parse(JSON.stringify(data));
+  return AREAS.find((a) => a.id === areaId)?.label || areaId;
 }
 
 function createId() {
-  if (window.crypto?.randomUUID) {
-    return window.crypto.randomUUID();
-  }
-
-  return `spot-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  return window.crypto?.randomUUID?.() || `spot-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
-// 관리자 모달 열기/닫기
+// ── 관리자 모달 ───────────────────────────────────────────────────────────
 function openAdminModal() {
   elements.adminPasswordInput.value = "";
   elements.adminPasswordError.textContent = "";
@@ -621,11 +591,11 @@ function closeAdminModal() {
   elements.adminPasswordError.textContent = "";
 }
 
-// 비밀번호 SHA-256 해시 검증
 async function verifyAdminPassword(input) {
   const encoded = new TextEncoder().encode(input);
   const hashBuffer = await window.crypto.subtle.digest("SHA-256", encoded);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+  const hashHex = Array.from(new Uint8Array(hashBuffer))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
   return hashHex === ADMIN_HASH;
 }
