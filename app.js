@@ -72,44 +72,6 @@ const AREAS = [
   },
 ];
 
-const seedApproved = [
-  {
-    id: createId(),
-    name: "아키바샵 홍대점",
-    area: "hongdae",
-    address: "서울 마포구 와우산로29길 48-14",
-    categories: ["kuji", "figure", "goods"],
-    description: "제일복권 라인업이 자주 바뀌고 피규어 진열이 탄탄한 편",
-    hours: "12:00 - 21:00",
-    author: "운영팀",
-    distance: "홍대",
-    pin: { x: 28, y: 38 },
-  },
-  {
-    id: createId(),
-    name: "가챠스팟 합정",
-    area: "hapjeong",
-    address: "서울 마포구 양화로6길 57-5",
-    categories: ["gacha", "goods"],
-    description: "캡슐 가챠 머신 수가 많고 신상 교체가 빠른 편",
-    hours: "11:30 - 22:00",
-    author: "운영팀",
-    distance: "합정",
-    pin: { x: 67, y: 46 },
-  },
-  {
-    id: createId(),
-    name: "피규어월드 건대",
-    area: "geondae",
-    address: "서울 광진구 아차산로31길 9",
-    categories: ["figure", "goods"],
-    description: "스케일 피규어와 각종 캐릭터 굿즈를 함께 보기 좋은 곳",
-    hours: "13:00 - 20:30",
-    author: "운영팀",
-    distance: "건대",
-    pin: { x: 70, y: 74 },
-  },
-];
 
 const state = {
   activeTab: "explore",
@@ -117,7 +79,7 @@ const state = {
   activeArea: AREAS.find((area) => area.defaultFocus)?.id || AREAS[0].id,
   query: "",
   viewMode: "map",
-  approved: loadCollection(STORAGE_KEYS.approved, seedApproved),
+  approved: loadCollection(STORAGE_KEYS.approved, []),
   pending: loadCollection(STORAGE_KEYS.pending, []),
   draftArea: AREAS.find((area) => area.defaultFocus)?.id || AREAS[0].id,
   get draftPin() { return getAreaPin(this.draftArea); },
