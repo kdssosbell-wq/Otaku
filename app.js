@@ -1,3 +1,7 @@
+// SHA-256("971012") — 브라우저 SubtleCrypto로 검증
+const ADMIN_HASH = "46de2f845bde8d171642382c630150d28c844756494c77b6a24c886afb6382da";
+let isAdminUnlocked = false;
+
 const STORAGE_KEYS = {
   approved: "otaku-map-approved",
   pending: "otaku-map-pending",
@@ -17,7 +21,6 @@ const AREAS = [
     defaultFocus: true,
     shapes: [
       { top: "16%", left: "12%", width: "34%", height: "24%" },
-      { top: "44%", left: "18%", width: "30%", height: "22%" },
     ],
     labelPos: { top: "22%", left: "18%" },
   },
@@ -26,7 +29,6 @@ const AREAS = [
     label: "합정",
     shapes: [
       { top: "20%", left: "56%", width: "26%", height: "24%" },
-      { top: "48%", left: "58%", width: "24%", height: "20%" },
     ],
     labelPos: { top: "28%", left: "61%" },
   },
@@ -34,7 +36,6 @@ const AREAS = [
     id: "geondae",
     label: "건대",
     shapes: [
-      { top: "64%", left: "22%", width: "30%", height: "20%" },
       { top: "60%", left: "58%", width: "24%", height: "18%" },
     ],
     labelPos: { top: "68%", left: "62%" },
@@ -62,6 +63,12 @@ const AREAS = [
     label: "동탄",
     shapes: [{ top: "74%", left: "76%", width: "16%", height: "14%" }],
     labelPos: { top: "77%", left: "78%" },
+  },
+  {
+    id: "pyeongtaek",
+    label: "평택",
+    shapes: [{ top: "86%", left: "34%", width: "22%", height: "12%" }],
+    labelPos: { top: "89%", left: "38%" },
   },
 ];
 
@@ -112,8 +119,8 @@ const state = {
   viewMode: "map",
   approved: loadCollection(STORAGE_KEYS.approved, seedApproved),
   pending: loadCollection(STORAGE_KEYS.pending, []),
-  draftPin: null,
   draftArea: AREAS.find((area) => area.defaultFocus)?.id || AREAS[0].id,
+  get draftPin() { return getAreaPin(this.draftArea); },
 };
 
 const elements = {
@@ -134,12 +141,13 @@ const elements = {
   searchButton: document.querySelector("#searchButton"),
   submissionForm: document.querySelector("#submissionForm"),
   submissionArea: document.querySelector("#submissionArea"),
-  pickerMap: document.querySelector("#pickerMap"),
-  pinPreviewLabel: document.querySelector("#pinPreviewLabel"),
-  pinXInput: document.querySelector("#pinXInput"),
-  pinYInput: document.querySelector("#pinYInput"),
   spotCardTemplate: document.querySelector("#spotCardTemplate"),
   pendingCardTemplate: document.querySelector("#pendingCardTemplate"),
+  adminModalOverlay: document.querySelector("#adminModalOverlay"),
+  adminPasswordForm: document.querySelector("#adminPasswordForm"),
+  adminPasswordInput: document.querySelector("#adminPasswordInput"),
+  adminPasswordError: document.querySelector("#adminPasswordError"),
+  adminModalCancel: document.querySelector("#adminModalCancel"),
 };
 
 bootstrap();
@@ -151,15 +159,52 @@ function bootstrap() {
   renderAreaOptions();
   bindEvents();
   render();
-  renderPickerMap();
 }
 
 function bindEvents() {
   elements.tabs.forEach((button) => {
     button.addEventListener("click", () => {
-      state.activeTab = button.dataset.tabTarget;
+      const target = button.dataset.tabTarget;
+      if (target === "admin" && !isAdminUnlocked) {
+        openAdminModal();
+        return;
+      }
+      state.activeTab = target;
       renderPanels();
     });
+  });
+
+  // 관리자 모달 이벤트
+  elements.adminPasswordForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const input = elements.adminPasswordInput.value;
+    const matched = await verifyAdminPassword(input);
+    if (matched) {
+      isAdminUnlocked = true;
+      closeAdminModal();
+      state.activeTab = "admin";
+      renderPanels();
+    } else {
+      elements.adminPasswordError.textContent = "비밀번호가 틀렸습니다.";
+      elements.adminPasswordInput.value = "";
+      elements.adminPasswordInput.focus();
+    }
+  });
+
+  elements.adminPasswordInput.addEventListener("input", () => {
+    elements.adminPasswordError.textContent = "";
+  });
+
+  elements.adminModalCancel.addEventListener("click", closeAdminModal);
+
+  elements.adminModalOverlay.addEventListener("click", (event) => {
+    if (event.target === elements.adminModalOverlay) closeAdminModal();
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && elements.adminModalOverlay.classList.contains("open")) {
+      closeAdminModal();
+    }
   });
 
   // 입력창은 Enter 키로도 검색 트리거 — 라이브 검색 없음
@@ -188,18 +233,6 @@ function bindEvents() {
 
   elements.submissionArea.addEventListener("change", (event) => {
     state.draftArea = event.target.value;
-    state.draftPin = null;
-    updateDraftPinInputs();
-    renderPickerMap();
-  });
-
-  elements.pickerMap.addEventListener("click", (event) => {
-    const rect = elements.pickerMap.getBoundingClientRect();
-    const x = Number((((event.clientX - rect.left) / rect.width) * 100).toFixed(1));
-    const y = Number((((event.clientY - rect.top) / rect.height) * 100).toFixed(1));
-    state.draftPin = { x, y };
-    updateDraftPinInputs();
-    renderPickerMap();
   });
 
   elements.submissionForm.addEventListener("submit", (event) => {
@@ -212,22 +245,18 @@ function bindEvents() {
       return;
     }
 
-    if (!state.draftPin) {
-      window.alert("지도 위를 눌러 위치를 선택해 주세요.");
-      return;
-    }
-
+    const selectedArea = formData.get("area");
     const entry = {
       id: createId(),
       name: formData.get("name"),
-      area: formData.get("area"),
+      area: selectedArea,
       address: formData.get("address"),
       categories,
       description: formData.get("description"),
       hours: formData.get("hours") || "정보 제보 필요",
       author: formData.get("author") || "익명 덕후",
-      distance: areaLabel(formData.get("area")),
-      pin: { ...state.draftPin },
+      distance: areaLabel(selectedArea),
+      pin: getAreaPin(selectedArea),
     };
 
     state.pending = [entry, ...state.pending];
@@ -235,10 +264,12 @@ function bindEvents() {
     event.currentTarget.reset();
     state.draftArea = state.activeArea;
     elements.submissionArea.value = state.draftArea;
-    state.draftPin = null;
-    updateDraftPinInputs();
-    renderPickerMap();
-    state.activeTab = "admin";
+    if (isAdminUnlocked) {
+      state.activeTab = "admin";
+    } else {
+      state.activeTab = "explore";
+      window.alert("제보가 접수됐습니다! 관리자 승인 후 지도에 표시됩니다.");
+    }
     render();
   });
 }
@@ -250,6 +281,10 @@ function render() {
 }
 
 function renderPanels() {
+  if (!isAdminUnlocked && state.activeTab === "admin") {
+    state.activeTab = "explore";
+  }
+
   elements.tabs.forEach((button) => {
     button.classList.toggle("active", button.dataset.tabTarget === state.activeTab);
   });
@@ -382,11 +417,13 @@ function renderPending() {
   });
 }
 
-function renderPickerMap() {
-  renderAreaMap(elements.pickerMap, state.draftArea, [], state.draftPin);
-  elements.pinPreviewLabel.textContent = state.draftPin
-    ? `${state.draftPin.x}% / ${state.draftPin.y}%`
-    : "위치를 선택해 주세요";
+function getAreaPin(areaId) {
+  const area = AREAS.find((item) => item.id === areaId);
+  if (!area) return { x: 50, y: 50 };
+  return {
+    x: parseFloat(area.labelPos.left),
+    y: parseFloat(area.labelPos.top),
+  };
 }
 
 function renderAreaMap(container, areaId, spots, draftPin = null) {
@@ -396,18 +433,18 @@ function renderAreaMap(container, areaId, spots, draftPin = null) {
   const isExploreMap = container === elements.mapStage;
 
   AREAS.forEach((item) => {
-    item.shapes.forEach((shape) => {
-      const shapeNode = document.createElement("div");
-      shapeNode.className = "district-shape";
-      shapeNode.style.top = shape.top;
-      shapeNode.style.left = shape.left;
-      shapeNode.style.width = shape.width;
-      shapeNode.style.height = shape.height;
-      if (item.id !== area.id) {
-        shapeNode.style.opacity = "0.35";
-      }
-      container.appendChild(shapeNode);
-    });
+    // 활성 지역의 shapes만 렌더링 — 비활성 지역은 레이블만 표시
+    if (item.id === area.id) {
+      item.shapes.forEach((shape) => {
+        const shapeNode = document.createElement("div");
+        shapeNode.className = "district-shape";
+        shapeNode.style.top = shape.top;
+        shapeNode.style.left = shape.left;
+        shapeNode.style.width = shape.width;
+        shapeNode.style.height = shape.height;
+        container.appendChild(shapeNode);
+      });
+    }
 
     const isActive = item.id === area.id;
     const label = document.createElement(isExploreMap ? "button" : "div");
@@ -453,13 +490,6 @@ function renderAreaMap(container, areaId, spots, draftPin = null) {
     container.appendChild(pin);
   }
 
-  if (container === elements.pickerMap) {
-    const helper = document.createElement("p");
-    helper.className = "picker-help";
-    helper.textContent = `${area.label} 지도 위 원하는 지점을 눌러 핀을 찍어 주세요.`;
-    container.parentElement.querySelector(".picker-help")?.remove();
-    container.insertAdjacentElement("afterend", helper);
-  }
 }
 
 function getFilteredApproved() {
@@ -580,11 +610,6 @@ function focusSpotCard(name) {
   );
 }
 
-function updateDraftPinInputs() {
-  elements.pinXInput.value = state.draftPin ? String(state.draftPin.x) : "";
-  elements.pinYInput.value = state.draftPin ? String(state.draftPin.y) : "";
-}
-
 function areaLabel(areaId) {
   return AREAS.find((item) => item.id === areaId)?.label || areaId;
 }
@@ -618,4 +643,27 @@ function createId() {
   }
 
   return `spot-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+// 관리자 모달 열기/닫기
+function openAdminModal() {
+  elements.adminPasswordInput.value = "";
+  elements.adminPasswordError.textContent = "";
+  elements.adminModalOverlay.classList.add("open");
+  requestAnimationFrame(() => elements.adminPasswordInput.focus());
+}
+
+function closeAdminModal() {
+  elements.adminModalOverlay.classList.remove("open");
+  elements.adminPasswordInput.value = "";
+  elements.adminPasswordError.textContent = "";
+}
+
+// 비밀번호 SHA-256 해시 검증
+async function verifyAdminPassword(input) {
+  const encoded = new TextEncoder().encode(input);
+  const hashBuffer = await window.crypto.subtle.digest("SHA-256", encoded);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+  return hashHex === ADMIN_HASH;
 }

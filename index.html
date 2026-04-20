@@ -70,7 +70,7 @@
         <div class="section-header">
           <p class="eyebrow">Community Submission</p>
           <h2>매장 제보하기</h2>
-          <p>지역을 고르고 지도 위를 눌러 위치를 찍어 주세요. 관리자가 승인하면 같은 위치에 매장이 표시됩니다.</p>
+          <p>지역을 선택하면 위치가 자동으로 지정됩니다. 관리자가 승인하면 지도에 매장이 표시됩니다.</p>
         </div>
 
         <form class="submission-form" id="submissionForm">
@@ -93,19 +93,6 @@
             취급 카테고리
             <div class="checkbox-grid" id="categoryCheckboxes"></div>
           </label>
-
-          <div class="pin-card">
-            <div class="pin-card__header">
-              <div>
-                <p class="eyebrow">Pin Your Spot</p>
-                <h3>위치 찍기</h3>
-              </div>
-              <span class="pill" id="pinPreviewLabel">위치를 선택해 주세요</span>
-            </div>
-            <div class="picker-map" id="pickerMap" aria-label="제보 위치 선택 지도"></div>
-            <input name="pinX" id="pinXInput" type="hidden" required>
-            <input name="pinY" id="pinYInput" type="hidden" required>
-          </div>
 
           <label>
             한줄 설명
@@ -155,10 +142,34 @@
       <button class="bottom-nav__item" data-tab-target="submit" type="button">
         <span>제보</span>
       </button>
-      <button class="bottom-nav__item" data-tab-target="admin" type="button">
+      <button class="bottom-nav__item" data-tab-target="admin" id="adminTabBtn" type="button">
         <span>관리</span>
       </button>
     </nav>
+  </div>
+
+  <!-- 관리자 비밀번호 모달 -->
+  <div class="admin-modal-overlay" id="adminModalOverlay" role="dialog" aria-modal="true" aria-label="관리자 인증">
+    <div class="admin-modal">
+      <p class="eyebrow">Admin Access</p>
+      <h2>관리자 인증</h2>
+      <p class="admin-modal__desc">관리자 비밀번호를 입력해 주세요.</p>
+      <form id="adminPasswordForm" autocomplete="off">
+        <input
+          id="adminPasswordInput"
+          type="password"
+          placeholder="비밀번호 입력"
+          maxlength="30"
+          required
+          aria-label="관리자 비밀번호"
+        >
+        <p class="admin-modal__error" id="adminPasswordError" aria-live="polite"></p>
+        <div class="admin-modal__actions">
+          <button type="button" class="ghost-btn" id="adminModalCancel">취소</button>
+          <button type="submit" class="primary-btn">확인</button>
+        </div>
+      </form>
+    </div>
   </div>
 
   <template id="spotCardTemplate">
