@@ -155,4 +155,48 @@
       <button class="bottom-nav__item" data-tab-target="submit" type="button">
         <span>제보</span>
       </button>
-      <button c
+      <button class="bottom-nav__item" data-tab-target="admin" type="button">
+        <span>관리</span>
+      </button>
+    </nav>
+  </div>
+
+  <template id="spotCardTemplate">
+    <article class="spot-card">
+      <div class="spot-card__top">
+        <div>
+          <h3></h3>
+          <p class="spot-card__meta"></p>
+        </div>
+        <span class="pill"></span>
+      </div>
+      <p class="spot-card__desc"></p>
+      <div class="tag-row"></div>
+      <div class="spot-card__foot">
+        <span class="spot-card__hours"></span>
+        <span class="spot-card__author"></span>
+      </div>
+    </article>
+  </template>
+
+  <template id="pendingCardTemplate">
+    <article class="pending-card">
+      <div class="pending-card__head">
+        <div>
+          <h3></h3>
+          <p class="pending-card__meta"></p>
+        </div>
+      </div>
+      <p class="pending-card__desc"></p>
+      <p class="pending-card__coords"></p>
+      <div class="tag-row"></div>
+      <div class="pending-card__actions">
+        <button class="ghost-btn js-reject" type="button">반려</button>
+        <button class="primary-btn js-approve" type="button">승인</button>
+      </div>
+    </article>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>
