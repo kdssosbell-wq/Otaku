@@ -57,8 +57,8 @@
         <section class="list-card">
           <div class="list-card__header">
             <div>
-              <p class="eyebrow">Approved Spots</p>
-              <h2>승인된 매장</h2>
+              <p class="eyebrow">Store List</p>
+              <h2>매장 리스트</h2>
             </div>
             <span class="pill" id="approvedCount">0곳</span>
           </div>
@@ -174,6 +174,10 @@
           <h2>승인된 매장 수정</h2>
           <p>이미 승인된 매장의 정보를 수정할 수 있습니다.</p>
         </div>
+        <div class="search-card admin-search-card">
+          <label class="sr-only" for="approvedAdminSearch">매장 검색</label>
+          <input id="approvedAdminSearch" type="search" placeholder="매장명, 지역명으로 검색">
+        </div>
         <div class="admin-list" id="approvedAdminList"></div>
       </section>
     </main>
@@ -258,18 +262,23 @@
   <!-- 매장 카드 템플릿 -->
   <template id="spotCardTemplate">
     <article class="spot-card">
-      <h3></h3>
-      <div class="spot-card__addr-row">
-        <p class="spot-card__meta"></p>
-        <button class="addr-copy-btn" type="button" aria-label="주소 복사">복사</button>
+      <button class="spot-card__toggle" type="button">
+        <h3></h3>
+        <span class="spot-card__chevron">›</span>
+      </button>
+      <div class="spot-card__body">
+        <div class="spot-card__addr-row">
+          <p class="spot-card__meta"></p>
+          <button class="addr-copy-btn" type="button" aria-label="주소 복사">복사</button>
+        </div>
+        <p class="spot-card__desc"></p>
+        <div class="tag-row"></div>
+        <div class="spot-card__foot">
+          <span class="spot-card__hours"></span>
+          <span class="spot-card__author"></span>
+        </div>
+        <div class="spot-card__extra"></div>
       </div>
-      <p class="spot-card__desc"></p>
-      <div class="tag-row"></div>
-      <div class="spot-card__foot">
-        <span class="spot-card__hours"></span>
-        <span class="spot-card__author"></span>
-      </div>
-      <div class="spot-card__extra"></div>
     </article>
   </template>
 
