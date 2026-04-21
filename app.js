@@ -411,6 +411,7 @@ function renderCategoryFilters() {
     btn.addEventListener("click", () => {
       state.activeCategory = cat.id;
       renderCategoryFilters();
+      renderRegionFilters();
       renderApproved();
     });
     elements.categoryFilters.appendChild(btn);
@@ -419,10 +420,13 @@ function renderCategoryFilters() {
 
 function renderRegionFilters() {
   elements.regionFilters.innerHTML = "";
-  // 영업중 필터가 켜져 있으면 영업 중인 매장만 카운트
-  const baseList = state.onlyOpen
-    ? state.approved.filter(isOpenNow)
-    : state.approved;
+  // 카테고리·영업중·검색어 필터를 모두 반영한 기준 목록 (지역 필터 제외)
+  const baseList = state.approved.filter(s => {
+    const matchesCat  = state.activeCategory === "all" || s.categories.includes(state.activeCategory);
+    const matchesOpen = !state.onlyOpen || isOpenNow(s);
+    const matchesQ    = !state.query || [s.name, areaLabel(s.area), s.address, s.description].join(" ").toLowerCase().includes(state.query);
+    return matchesCat && matchesOpen && matchesQ;
+  });
 
   REGIONS.forEach((region) => {
     const count = baseList.filter(s => region.areaIds.includes(s.area)).length;
@@ -550,11 +554,10 @@ function renderAreaMap(container, activeAreaId, spots) {
     ? AREAS.filter(a => activeRegion.areaIds.includes(a.id))
     : AREAS;
 
-  // 지역별 승인 매장 수 (히트맵용) — 영업중 필터 반영
-  const mapBaseList = state.onlyOpen ? state.approved.filter(isOpenNow) : state.approved;
+  // 지역별 매장 수 (히트맵용) — 현재 활성 필터(카테고리·영업중·검색어) 모두 반영
   const countMap = {};
   AREAS.forEach(a => { countMap[a.id] = 0; });
-  mapBaseList.forEach(s => { if (countMap[s.area] !== undefined) countMap[s.area]++; });
+  spots.forEach(s => { if (countMap[s.area] !== undefined) countMap[s.area]++; });
   const maxCount = Math.max(1, ...visibleAreas.map(a => countMap[a.id] || 0));
 
   // ── 위치 정규화: 평균값 기준 + 세로/가로 독립 스케일 ──
