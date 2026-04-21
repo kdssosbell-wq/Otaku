@@ -181,7 +181,8 @@ select {
 .chip {
   border: 1px solid transparent;
   border-radius: 999px;
-  padding: 10px 14px;
+  padding: 7px 12px;
+  font-size: 0.82rem;
   background: rgba(255, 255, 255, 0.65);
   color: var(--muted);
   font-weight: 600;
