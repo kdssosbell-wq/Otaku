@@ -8,10 +8,10 @@ const firebaseConfig = {
   appId:             "1:227268562859:web:ab842e7c9e3c5763628cee",
 };
 firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
+const db   = firebase.firestore();
+const auth = firebase.auth();
 
-// ── 관리자 비밀번호 (SHA-256 암호화) ──────────────────────────────────────
-const ADMIN_HASH = "46de2f845bde8d171642382c630150d28c844756494c77b6a24c886afb6382da";
+// ── 관리자 인증 상태 ────────────────────────────────────────────────────────
 let isAdminUnlocked = false;
 
 // ── 카테고리 & 지역 & 요일 정의 ───────────────────────────────────────────
@@ -95,7 +95,7 @@ const state = {
   activeTab:      "explore",
   activeCategory: "all",
   activeRegion:   "seoul", // 대분류 (기본: 서울)
-  activeArea:     null,   // 소분류 (null = 미선택)
+  activeArea:     null,    // 소분류 (null = 미선택)
   query:          "",
   viewMode:       "map",
   approved:       [],
@@ -126,12 +126,8 @@ const elements = {
   submissionArea:     document.querySelector("#submissionArea"),
   spotCardTemplate:   document.querySelector("#spotCardTemplate"),
   pendingCardTemplate:document.querySelector("#pendingCardTemplate"),
-  // 관리자 비밀번호 모달
-  adminModalOverlay:  document.querySelector("#adminModalOverlay"),
-  adminPasswordForm:  document.querySelector("#adminPasswordForm"),
-  adminPasswordInput: document.querySelector("#adminPasswordInput"),
-  adminPasswordError: document.querySelector("#adminPasswordError"),
-  adminModalCancel:   document.querySelector("#adminModalCancel"),
+  // 로그아웃 버튼
+  logoutBtn:          document.querySelector("#logoutBtn"),
   // 제보 수정 모달
   editModalOverlay:   document.querySelector("#editModalOverlay"),
   editForm:           document.querySelector("#editForm"),
@@ -165,8 +161,34 @@ function bootstrap() {
   populateEditAreaOptions();
   populateEditCategoryCheckboxes();
   bindEvents();
+  setupAuthListener();
   render();
   setupFirestoreListeners();
+}
+
+// ── Firebase Auth 리스너 ──────────────────────────────────────────────────
+function setupAuthListener() {
+  auth.onAuthStateChanged((user) => {
+    isAdminUnlocked = !!user;
+
+    // 로그아웃 버튼 표시/숨김
+    if (elements.logoutBtn) {
+      elements.logoutBtn.hidden = !isAdminUnlocked;
+    }
+
+    // 로그인 후 #admin 해시로 리다이렉트된 경우 → 관리 탭 자동 열기
+    if (isAdminUnlocked && window.location.hash === "#admin") {
+      history.replaceState(null, "", window.location.pathname);
+      state.activeTab = "admin";
+    }
+
+    // 관리자 권한이 사라졌는데 관리 탭이면 → 지도 탭으로
+    if (!isAdminUnlocked && state.activeTab === "admin") {
+      state.activeTab = "explore";
+    }
+
+    renderPanels();
+  });
 }
 
 // ── Firestore 실시간 리스너 ───────────────────────────────────────────────
@@ -194,37 +216,31 @@ function bindEvents() {
   elements.tabs.forEach((btn) => {
     btn.addEventListener("click", () => {
       const target = btn.dataset.tabTarget;
-      if (target === "admin" && !isAdminUnlocked) { openAdminModal(); return; }
+      if (target === "admin" && !isAdminUnlocked) {
+        // 관리자 미로그인 → 로그인 페이지로 이동
+        window.location.href = "admin.html";
+        return;
+      }
       state.activeTab = target;
       renderPanels();
     });
   });
 
-  // ── 관리자 비밀번호 모달 ──
-  elements.adminPasswordForm.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const matched = await verifyAdminPassword(elements.adminPasswordInput.value);
-    if (matched) {
-      isAdminUnlocked = true;
-      closeAdminModal();
-      state.activeTab = "admin";
+  // 로그아웃 버튼
+  elements.logoutBtn?.addEventListener("click", async () => {
+    if (!window.confirm("로그아웃 하시겠습니까?")) return;
+    try {
+      await auth.signOut();
+      state.activeTab = "explore";
       renderPanels();
-    } else {
-      elements.adminPasswordError.textContent = "비밀번호가 틀렸습니다.";
-      elements.adminPasswordInput.value = "";
-      elements.adminPasswordInput.focus();
+    } catch (err) {
+      console.error("로그아웃 실패:", err);
     }
   });
-  elements.adminPasswordInput.addEventListener("input", () => {
-    elements.adminPasswordError.textContent = "";
-  });
-  elements.adminModalCancel.addEventListener("click", closeAdminModal);
-  elements.adminModalOverlay.addEventListener("click", (e) => {
-    if (e.target === elements.adminModalOverlay) closeAdminModal();
-  });
+
+  // Escape 키 → 제보 수정 모달 닫기
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") {
-      if (elements.adminModalOverlay.classList.contains("open")) closeAdminModal();
       if (elements.editModalOverlay.classList.contains("open")) closeEditModal();
     }
   });
@@ -524,7 +540,6 @@ function renderAreaMap(container, activeAreaId, spots) {
   const maxCount = Math.max(1, ...visibleAreas.map(a => countMap[a.id] || 0));
 
   // ── 위치 정규화: 평균값 기준 + 세로/가로 독립 스케일 ──
-  // 데이터 범위가 좁으면 더 많이 펼치고, 넓으면 그대로 유지
   const rawTops  = visibleAreas.map(a => parseFloat(a.labelPos.top));
   const rawLefts = visibleAreas.map(a => parseFloat(a.labelPos.left));
   const meanT = rawTops.reduce((s,v) => s+v, 0)  / rawTops.length;
@@ -836,10 +851,7 @@ async function deleteApproved(entryId) {
 
 // ── 수정 모달 ─────────────────────────────────────────────────────────────
 function openEditModal(entry, collection = "pending") {
-  // 어느 컬렉션 대상인지 저장
   elements.editCollection.value  = collection;
-
-  // 기존 데이터 채우기
   elements.editEntryId.value    = entry.id;
   elements.editName.value       = entry.name;
   elements.editArea.value       = entry.area;
@@ -849,22 +861,18 @@ function openEditModal(entry, collection = "pending") {
   elements.editSns.value        = entry.sns   || "";
   elements.editPhone.value      = entry.phone || "";
 
-  // 카테고리 체크박스
   elements.editCategoryCheckboxes.querySelectorAll("input").forEach((cb) => {
     cb.checked = (entry.categories || []).includes(cb.value);
   });
 
-  // 휴무일 체크박스
   document.querySelectorAll("#editClosedDays input").forEach((cb) => {
     cb.checked = (entry.closedDays || []).includes(cb.value);
   });
 
-  // 주차 라디오
   document.querySelectorAll("#editParking input[type=radio]").forEach((rb) => {
     rb.checked = rb.value === (entry.parking || "");
   });
 
-  // 모달 제목 구분
   const modalTitle = elements.editModalOverlay.querySelector("h2");
   if (modalTitle) modalTitle.textContent = collection === "approved" ? "매장 정보 수정" : "제보 수정";
 
@@ -984,27 +992,4 @@ function areaLabel(areaId) {
 
 function createId() {
   return window.crypto?.randomUUID?.() || `spot-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-}
-
-// ── 관리자 비밀번호 모달 ──────────────────────────────────────────────────
-function openAdminModal() {
-  elements.adminPasswordInput.value = "";
-  elements.adminPasswordError.textContent = "";
-  elements.adminModalOverlay.classList.add("open");
-  requestAnimationFrame(() => elements.adminPasswordInput.focus());
-}
-
-function closeAdminModal() {
-  elements.adminModalOverlay.classList.remove("open");
-  elements.adminPasswordInput.value = "";
-  elements.adminPasswordError.textContent = "";
-}
-
-async function verifyAdminPassword(input) {
-  const encoded = new TextEncoder().encode(input);
-  const hashBuffer = await window.crypto.subtle.digest("SHA-256", encoded);
-  const hashHex = Array.from(new Uint8Array(hashBuffer))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-  return hashHex === ADMIN_HASH;
 }
