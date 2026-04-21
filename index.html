@@ -157,6 +157,15 @@
         </div>
 
         <div class="admin-list" id="pendingList"></div>
+
+        <div class="admin-section-divider"></div>
+
+        <div class="section-header">
+          <p class="eyebrow">Approved Stores</p>
+          <h2>승인된 매장 수정</h2>
+          <p>이미 승인된 매장의 정보를 수정할 수 있습니다.</p>
+        </div>
+        <div class="admin-list" id="approvedAdminList"></div>
       </section>
     </main>
 
@@ -197,6 +206,7 @@
       <h2>제보 수정</h2>
       <form id="editForm" autocomplete="off">
         <input type="hidden" id="editEntryId">
+        <input type="hidden" id="editCollection" value="pending">
         <label>매장명<input id="editName" type="text" maxlength="40" required></label>
         <label>지역<select id="editArea"></select></label>
         <label>주소<input id="editAddress" type="text" maxlength="80" required></label>
