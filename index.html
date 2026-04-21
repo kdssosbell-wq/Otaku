@@ -310,8 +310,8 @@
     </article>
   </template>
 
-  <!-- 카카오맵 SDK -->
-  <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=5e42d75fca65b3e13e8fde87acfca5fe&libraries=services"></script>
+  <!-- 카카오맵 SDK (autoload=false → kakao.maps.load() 콜백 후 앱 시작) -->
+  <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=5e42d75fca65b3e13e8fde87acfca5fe&libraries=services&autoload=false"></script>
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
