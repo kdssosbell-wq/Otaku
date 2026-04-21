@@ -10,27 +10,6 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-// ── 카카오 REST API 키 (도메인 제한으로 보호 — 카카오 개발자 콘솔에서 설정)
-const KAKAO_REST_KEY = "202fdd09c1aef23f61752fb1b8419ae4";
-
-// ── 카카오맵 지역별 중심 좌표 & 줌 레벨 ───────────────────────────────────
-const AREA_COORDS = {
-  hongdae:    { lat: 37.5563, lng: 126.9236, level: 4 },
-  hapjeong:   { lat: 37.5499, lng: 126.9143, level: 4 },
-  sinchon:    { lat: 37.5559, lng: 126.9368, level: 4 },
-  yongsan:    { lat: 37.5327, lng: 126.9654, level: 4 },
-  gangnam:    { lat: 37.4979, lng: 127.0276, level: 4 },
-  geondae:    { lat: 37.5408, lng: 127.0693, level: 4 },
-  osan:       { lat: 37.1498, lng: 127.0773, level: 5 },
-  dongtan:    { lat: 37.2100, lng: 127.0761, level: 5 },
-  pyeongtaek: { lat: 36.9921, lng: 127.1126, level: 5 },
-};
-
-// ── 카카오맵 인스턴스 ─────────────────────────────────────────────────────
-let kakaoMap = null;
-let kakaoMarkers = [];
-let kakaoMapInitialized = false;
-
 // ── 관리자 비밀번호 (SHA-256 암호화) ──────────────────────────────────────
 const ADMIN_HASH = "46de2f845bde8d171642382c630150d28c844756494c77b6a24c886afb6382da";
 let isAdminUnlocked = false;
@@ -77,6 +56,11 @@ const AREAS = [
     labelPos: { top: "68%", left: "62%" },
   },
   {
+    id: "suwon", label: "수원",
+    shapes: [{ top: "60%", left: "18%", width: "20%", height: "14%" }],
+    labelPos: { top: "63%", left: "22%" },
+  },
+  {
     id: "osan", label: "오산",
     shapes: [{ top: "74%", left: "8%", width: "18%", height: "14%" }],
     labelPos: { top: "77%", left: "11%" },
@@ -93,11 +77,20 @@ const AREAS = [
   },
 ];
 
+// ── 대분류 지역 정의 ──────────────────────────────────────────────────────
+const REGIONS = [
+  { id: "seoul",    label: "서울",   areaIds: ["hongdae","hapjeong","sinchon","yongsan","gangnam","geondae"] },
+  { id: "gyeonggi", label: "경기도", areaIds: ["suwon","osan","dongtan","pyeongtaek"] },
+  { id: "busan",    label: "부산",   areaIds: [] },
+  { id: "daejeon",  label: "대전",   areaIds: [] },
+];
+
 // ── 앱 상태 ───────────────────────────────────────────────────────────────
 const state = {
   activeTab:      "explore",
   activeCategory: "all",
-  activeArea:     AREAS.find((a) => a.defaultFocus)?.id || AREAS[0].id,
+  activeRegion:   "seoul", // 대분류 (기본: 서울)
+  activeArea:     null,   // 소분류 (null = 미선택)
   query:          "",
   viewMode:       "map",
   approved:       [],
@@ -112,7 +105,7 @@ const elements = {
   tabs:               [...document.querySelectorAll("[data-tab-target]")],
   panels:             [...document.querySelectorAll("[data-panel]")],
   categoryFilters:    document.querySelector("#categoryFilters"),
-  areaFilters:        document.querySelector("#areaFilters"),
+  regionFilters:      document.querySelector("#regionFilters"),
   categoryCheckboxes: document.querySelector("#categoryCheckboxes"),
   approvedList:       document.querySelector("#approvedList"),
   approvedCount:      document.querySelector("#approvedCount"),
@@ -151,22 +144,17 @@ const elements = {
   // 승인된 매장 관리 목록
   approvedAdminList:    document.querySelector("#approvedAdminList"),
   approvedAdminSearch:  document.querySelector("#approvedAdminSearch"),
-  // 제보 폼 장소 검색
-  placeSearchInput:     document.querySelector("#placeSearchInput"),
-  placeDropdown:        document.querySelector("#placeDropdown"),
+  // 매장명 중복 검사
+  nameInput:            document.querySelector("#nameInput"),
+  nameError:            document.querySelector("#nameError"),
 };
 
-// 카카오 SDK 로딩 완료 후 앱 시작 (SDK 로드 실패 시에도 앱은 동작)
-if (window.kakao?.maps?.load) {
-  kakao.maps.load(() => bootstrap());
-} else {
-  bootstrap();
-}
+bootstrap();
 
 // ── 초기화 ────────────────────────────────────────────────────────────────
 function bootstrap() {
   renderCategoryFilters();
-  renderAreaFilters();
+  renderRegionFilters();
   renderCategoryCheckboxes();
   renderAreaOptions();
   populateEditAreaOptions();
@@ -180,6 +168,7 @@ function bootstrap() {
 function setupFirestoreListeners() {
   db.collection("approved").onSnapshot((snapshot) => {
     state.approved = snapshot.docs.map((doc) => doc.data());
+    renderRegionFilters();
     renderApproved();
     renderApprovedAdmin();
   }, (err) => console.error("approved 리스너 오류:", err));
@@ -203,13 +192,6 @@ function bindEvents() {
       if (target === "admin" && !isAdminUnlocked) { openAdminModal(); return; }
       state.activeTab = target;
       renderPanels();
-      // 지도 탭으로 돌아올 때 relayout
-      if (target === "explore" && state.viewMode === "map") {
-        requestAnimationFrame(() => {
-          if (!kakaoMapInitialized) initKakaoMap();
-          else kakaoMap?.relayout();
-        });
-      }
     });
   });
 
@@ -289,20 +271,6 @@ function bindEvents() {
   });
   elements.searchButton.addEventListener("click", executeSearch);
 
-  // ── 제보 폼 카카오 장소 검색 ──
-  elements.placeSearchInput?.addEventListener("input", (e) =>
-    debouncedPlaceSearch(e.target.value.trim())
-  );
-  elements.placeSearchInput?.addEventListener("search", (e) => {
-    if (!e.target.value) elements.placeDropdown.hidden = true;
-  });
-  // 드롭다운 바깥 클릭 시 닫기
-  document.addEventListener("click", (e) => {
-    if (!e.target.closest(".place-search-wrap")) {
-      if (elements.placeDropdown) elements.placeDropdown.hidden = true;
-    }
-  });
-
   // ── 관리 탭 승인 매장 검색 ──
   elements.approvedAdminSearch?.addEventListener("input", (e) => {
     state.adminApprovedQuery = e.target.value.trim().toLowerCase();
@@ -323,12 +291,21 @@ function bindEvents() {
     state.draftArea = e.target.value;
   });
 
+  // ── 매장명 실시간 중복 검사 ──
+  elements.nameInput?.addEventListener("input", () => {
+    checkDuplicateName(elements.nameInput.value.trim());
+  });
+
   // ── 제보 폼 제출 ──
   elements.submissionForm.addEventListener("submit", async (event) => {
     event.preventDefault();
     const form       = event.currentTarget;
     const formData   = new FormData(form);
     const categories = formData.getAll("categories");
+
+    // 중복 매장 최종 차단
+    const nameVal = (formData.get("name") || "").trim();
+    if (nameVal && checkDuplicateName(nameVal)) return;
 
     if (!categories.length) {
       window.alert("카테고리를 하나 이상 선택해 주세요.");
@@ -357,6 +334,7 @@ function bindEvents() {
     try {
       await db.collection("pending").doc(entry.id).set(entry);
       form.reset();
+      clearNameError();
       state.draftArea = state.activeArea;
       elements.submissionArea.value = state.draftArea;
       if (isAdminUnlocked) {
@@ -376,6 +354,7 @@ function bindEvents() {
 // ── 렌더링 ────────────────────────────────────────────────────────────────
 function render() {
   renderPanels();
+  renderRegionFilters();
   renderApproved();
   renderPending();
   renderApprovedAdmin();
@@ -408,28 +387,30 @@ function renderCategoryFilters() {
   });
 }
 
-function renderAreaFilters() {
-  elements.areaFilters.innerHTML = "";
-  let activeBtn = null;
-  AREAS.forEach((area) => {
+function renderRegionFilters() {
+  elements.regionFilters.innerHTML = "";
+  REGIONS.forEach((region) => {
+    const count = state.approved.filter(s => region.areaIds.includes(s.area)).length;
+    const isActive = region.id === state.activeRegion;
     const btn = document.createElement("button");
     btn.type = "button";
-    const isActive = area.id === state.activeArea;
     btn.className = `chip${isActive ? " active" : ""}`;
-    btn.textContent = area.label;
+    btn.innerHTML = count > 0
+      ? `${region.label}<span class="region-count">${count}</span>`
+      : region.label;
     btn.addEventListener("click", () => {
-      state.activeArea = area.id;
-      renderAreaFilters();
+      if (state.activeRegion === region.id) {
+        state.activeRegion = null;
+        state.activeArea   = null;
+      } else {
+        state.activeRegion = region.id;
+        state.activeArea   = null;
+      }
+      renderRegionFilters();
       renderApproved();
     });
-    elements.areaFilters.appendChild(btn);
-    if (isActive) activeBtn = btn;
+    elements.regionFilters.appendChild(btn);
   });
-  if (activeBtn) {
-    requestAnimationFrame(() => {
-      activeBtn.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
-    });
-  }
 }
 
 function renderCategoryCheckboxes() {
@@ -481,7 +462,12 @@ function renderApproved() {
   elements.toggleViewButton.textContent = state.viewMode === "map" ? "리스트 보기" : "지도 보기";
   const showMap = state.viewMode === "map";
   elements.mapStage.style.display = showMap ? "block" : "none";
-  elements.mapStatus.textContent  = `${areaLabel(state.activeArea)} · 승인 매장 ${filtered.length}곳`;
+  const statusLabel = state.activeArea
+    ? areaLabel(state.activeArea)
+    : state.activeRegion
+      ? (REGIONS.find(r => r.id === state.activeRegion)?.label || "")
+      : "전체";
+  elements.mapStatus.textContent = `${statusLabel} · 승인 매장 ${filtered.length}곳`;
 
   filtered.forEach((spot) => elements.approvedList.appendChild(createSpotCard(spot)));
 
@@ -495,18 +481,7 @@ function renderApproved() {
     elements.approvedList.appendChild(empty);
   }
 
-  if (showMap) {
-    requestAnimationFrame(() => {
-      if (!kakaoMapInitialized) {
-        initKakaoMap();
-      } else {
-        updateKakaoMapArea(state.activeArea);
-        kakaoMap.relayout();
-      }
-      clearKakaoMarkers();
-      filtered.forEach((spot) => geocodeAndPin(spot));
-    });
-  }
+  if (showMap) renderAreaMap(elements.mapStage, state.activeArea, filtered);
 }
 
 function renderPending() {
@@ -527,146 +502,76 @@ function renderPending() {
   state.pending.forEach((entry) => elements.pendingList.appendChild(createPendingCard(entry)));
 }
 
-// ── 카카오맵 초기화 ───────────────────────────────────────────────────────
-function initKakaoMap() {
-  if (kakaoMapInitialized || !window.kakao?.maps) return;
-  const coords = AREA_COORDS[state.activeArea] || AREA_COORDS.hongdae;
-  kakaoMap = new kakao.maps.Map(elements.mapStage, {
-    center: new kakao.maps.LatLng(coords.lat, coords.lng),
-    level:  coords.level,
+// ── 커스텀 SVG 스타일 지도 렌더링 ────────────────────────────────────────
+function renderAreaMap(container, activeAreaId, spots) {
+  container.innerHTML = "";
+
+  // 현재 대분류에 따라 보여줄 지역 목록 결정
+  const activeRegion  = REGIONS.find(r => r.id === state.activeRegion);
+  const visibleAreas  = activeRegion
+    ? AREAS.filter(a => activeRegion.areaIds.includes(a.id))
+    : AREAS;
+
+  // 지역별 승인 매장 수 (히트맵용)
+  const countMap = {};
+  AREAS.forEach((a) => { countMap[a.id] = 0; });
+  state.approved.forEach((s) => { if (countMap[s.area] !== undefined) countMap[s.area]++; });
+  const maxCount = Math.max(1, ...visibleAreas.map(a => countMap[a.id] || 0));
+
+  visibleAreas.forEach((area) => {
+    const count     = countMap[area.id] || 0;
+    const intensity = count / maxCount;
+    const isActive  = area.id === activeAreaId;
+    const shape     = area.shapes[0];
+
+    // ── 히트맵 글로우 블롭 ──
+    const shapeW = parseFloat(shape.width);
+    const shapeH = parseFloat(shape.height);
+    const blobCX = parseFloat(shape.left) + shapeW / 2;
+    const blobCY = parseFloat(shape.top)  + shapeH / 2;
+    const blobW  = shapeW * (1.5 + intensity * 1.0);
+    const blobH  = shapeH * (1.8 + intensity * 1.2);
+    const a1 = count === 0 ? 0.035 : 0.13 + intensity * 0.24;
+    const a2 = count === 0 ? 0.01  : 0.05 + intensity * 0.10;
+
+    const blob = document.createElement("div");
+    blob.className = "map-blob";
+    blob.style.cssText = `
+      left:${blobCX}%; top:${blobCY}%;
+      width:${blobW}%; height:${blobH}%;
+      background: radial-gradient(ellipse at center,
+        rgba(239,91,42,${a1}) 0%,
+        rgba(239,91,42,${a2}) 42%,
+        transparent 70%);
+    `;
+    container.appendChild(blob);
+
+    // ── 지역 라벨 버튼 ──
+    const label = document.createElement("button");
+    label.type = "button";
+    label.className = `district-label${isActive ? " active" : ""}`;
+    Object.assign(label.style, { top: area.labelPos.top, left: area.labelPos.left });
+    label.innerHTML = count > 0
+      ? `${area.label}<span class="map-label-count">${count}</span>`
+      : area.label;
+    label.addEventListener("click", () => {
+      state.activeArea = area.id === activeAreaId ? null : area.id;
+      renderApproved();
+    });
+    container.appendChild(label);
   });
-  kakaoMapInitialized = true;
-  // 초기 마커 렌더
-  const filtered = getFilteredApproved();
-  filtered.forEach((spot) => geocodeAndPin(spot));
-}
 
-function updateKakaoMapArea(areaId) {
-  if (!kakaoMap) return;
-  const coords = AREA_COORDS[areaId] || AREA_COORDS.hongdae;
-  kakaoMap.setCenter(new kakao.maps.LatLng(coords.lat, coords.lng));
-  kakaoMap.setLevel(coords.level);
-}
-
-function clearKakaoMarkers() {
-  kakaoMarkers.forEach((o) => o.setMap(null));
-  kakaoMarkers = [];
-}
-
-function addKakaoMarker(lat, lng, spot) {
-  const markerEl = document.createElement("div");
-  markerEl.className = "map-pulse-marker";
-  markerEl.setAttribute("title", spot.name);
-  markerEl.addEventListener("click", () => focusSpotCard(spot.name));
-
-  const overlay = new kakao.maps.CustomOverlay({
-    position: new kakao.maps.LatLng(lat, lng),
-    content:  markerEl,
-    yAnchor:  0.5,
-    xAnchor:  0.5,
+  // ── 핀 렌더링 ──
+  spots.forEach((spot) => {
+    if (!spot.pin) return;
+    const pin = document.createElement("div");
+    pin.className = "map-pin";
+    pin.style.left = `${spot.pin.x}%`;
+    pin.style.top  = `${spot.pin.y}%`;
+    pin.title = spot.name;
+    pin.addEventListener("click", () => focusSpotCard(spot.name));
+    container.appendChild(pin);
   });
-  overlay.setMap(kakaoMap);
-  kakaoMarkers.push(overlay);
-}
-
-async function geocodeAndPin(spot) {
-  if (!kakaoMapInitialized) return;
-  // 이미 좌표가 있으면 바로 핀 찍기
-  if (spot.lat && spot.lng) {
-    addKakaoMarker(spot.lat, spot.lng, spot);
-    return;
-  }
-  // 주소 → 좌표 변환
-  try {
-    const res = await fetch(
-      `https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(spot.address)}`,
-      { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` } }
-    );
-    const data = await res.json();
-    if (data.documents?.[0]) {
-      const lat = parseFloat(data.documents[0].y);
-      const lng = parseFloat(data.documents[0].x);
-      addKakaoMarker(lat, lng, spot);
-      // Firestore에 좌표 캐시 (다음부터 API 호출 없이 사용)
-      if (spot.id) {
-        db.collection("approved").doc(spot.id).update({ lat, lng }).catch(() => {});
-      }
-    }
-  } catch (err) {
-    console.warn(`좌표 변환 실패 (${spot.name}):`, err);
-  }
-}
-
-// ── 카카오 장소 검색 (제보 폼) ────────────────────────────────────────────
-function debounce(fn, delay) {
-  let timer;
-  return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), delay); };
-}
-
-const debouncedPlaceSearch = debounce(async (query) => {
-  if (!query || query.length < 2) {
-    elements.placeDropdown.hidden = true;
-    return;
-  }
-  try {
-    const res = await fetch(
-      `https://dapi.kakao.com/v2/local/search/keyword.json?query=${encodeURIComponent(query)}&size=7`,
-      { headers: { Authorization: `KakaoAK ${KAKAO_REST_KEY}` } }
-    );
-    const data = await res.json();
-    renderPlaceDropdown(data.documents || []);
-  } catch (err) {
-    console.warn("장소 검색 실패:", err);
-  }
-}, 350);
-
-function renderPlaceDropdown(places) {
-  elements.placeDropdown.innerHTML = "";
-  if (!places.length) { elements.placeDropdown.hidden = true; return; }
-  places.forEach((place) => {
-    const li = document.createElement("li");
-    li.className = "place-dropdown__item";
-    const addr = place.road_address_name || place.address_name;
-    li.innerHTML = `<span class="place-dropdown__name">${place.place_name}</span><span class="place-dropdown__addr">${addr}</span>`;
-    li.addEventListener("click", () => onPlaceSelect(place));
-    elements.placeDropdown.appendChild(li);
-  });
-  elements.placeDropdown.hidden = false;
-}
-
-function onPlaceSelect(place) {
-  const addr = place.road_address_name || place.address_name;
-  const nameInput    = elements.submissionForm.querySelector("[name=name]");
-  const addressInput = elements.submissionForm.querySelector("[name=address]");
-  const phoneInput   = elements.submissionForm.querySelector("[name=phone]");
-
-  if (nameInput)    nameInput.value    = place.place_name;
-  if (addressInput) addressInput.value = addr;
-  if (phoneInput && place.phone) phoneInput.value = place.phone;
-
-  const guessed = guessAreaFromAddress(addr + " " + place.place_name);
-  if (guessed) {
-    state.draftArea = guessed;
-    elements.submissionArea.value = guessed;
-  }
-
-  elements.placeSearchInput.value = "";
-  elements.placeDropdown.hidden = true;
-  nameInput?.focus();
-}
-
-function guessAreaFromAddress(text) {
-  if (!text) return null;
-  if (/마포|홍익|홍대/.test(text))       return "hongdae";
-  if (/합정/.test(text))                 return "hapjeong";
-  if (/서대문|신촌/.test(text))           return "sinchon";
-  if (/용산/.test(text))                 return "yongsan";
-  if (/강남|서초/.test(text))             return "gangnam";
-  if (/광진|건대/.test(text))             return "geondae";
-  if (/오산시/.test(text))               return "osan";
-  if (/동탄|화성/.test(text))             return "dongtan";
-  if (/평택/.test(text))                 return "pyeongtaek";
-  return null;
 }
 
 // ── 카드 생성 ─────────────────────────────────────────────────────────────
@@ -788,9 +693,8 @@ async function approveEntry(entryId) {
     batch.set(db.collection("approved").doc(entryId), { ...match, distance: areaLabel(match.area) });
     await batch.commit();
     state.activeArea = match.area;
-    state.activeTab  = "explore";
-    renderAreaFilters();
-    renderPanels();
+    const region = REGIONS.find(r => r.areaIds.includes(match.area));
+    if (region) state.activeRegion = region.id;
   } catch (err) {
     console.error("승인 실패:", err);
     window.alert("승인 중 오류가 발생했습니다.");
@@ -940,7 +844,15 @@ function closeEditModal() {
 // ── 검색 & 필터 ───────────────────────────────────────────────────────────
 function getFilteredApproved() {
   return state.approved.filter((spot) => {
-    const matchesArea     = spot.area === state.activeArea;
+    let matchesArea;
+    if (state.activeArea) {
+      matchesArea = spot.area === state.activeArea;
+    } else if (state.activeRegion) {
+      const region = REGIONS.find(r => r.id === state.activeRegion);
+      matchesArea = region ? region.areaIds.includes(spot.area) : true;
+    } else {
+      matchesArea = true;
+    }
     const matchesCategory = state.activeCategory === "all" || spot.categories.includes(state.activeCategory);
     const haystack = [spot.name, areaLabel(spot.area), spot.address, spot.description].join(" ").toLowerCase();
     const matchesQuery = !state.query || haystack.includes(state.query);
@@ -953,19 +865,61 @@ function executeSearch() {
   if (!raw) { state.query = ""; renderApproved(); return; }
 
   const lower = raw.toLowerCase();
+
+  // 대분류(지역) 매칭
+  const matchedRegion = REGIONS.find(r => r.label === raw || lower === r.id);
+  if (matchedRegion) {
+    state.activeRegion = matchedRegion.id;
+    state.activeArea   = null;
+    state.query = "";
+    elements.searchInput.value = "";
+    renderRegionFilters();
+    renderApproved();
+    return;
+  }
+
+  // 소분류(구역) 매칭
   const matchedArea = AREAS.find(
     (a) => a.label === raw || lower === a.id.toLowerCase() || raw.includes(a.label)
   );
   if (matchedArea) {
-    state.activeArea = matchedArea.id;
+    const region = REGIONS.find(r => r.areaIds.includes(matchedArea.id));
+    state.activeRegion = region?.id || null;
+    state.activeArea   = matchedArea.id;
     state.query = "";
     elements.searchInput.value = "";
-    renderAreaFilters();
+    renderRegionFilters();
     renderApproved();
     return;
   }
+
   state.query = lower;
   renderApproved();
+}
+
+// ── 중복 매장명 검사 ──────────────────────────────────────────────────────
+function checkDuplicateName(name) {
+  if (!name) { clearNameError(); return false; }
+  const lower = name.toLowerCase();
+  const isDup = [...state.approved, ...state.pending].some(
+    (s) => s.name?.trim().toLowerCase() === lower
+  );
+  if (isDup) {
+    elements.nameError.textContent = "이미 제보 완료된 매장입니다.";
+    elements.nameError.hidden = false;
+    elements.nameError.classList.add("name-error--visible");
+    elements.nameInput?.classList.add("name-input--error");
+  } else {
+    clearNameError();
+  }
+  return isDup;
+}
+
+function clearNameError() {
+  if (!elements.nameError) return;
+  elements.nameError.hidden = true;
+  elements.nameError.classList.remove("name-error--visible");
+  elements.nameInput?.classList.remove("name-input--error");
 }
 
 // ── 유틸리티 ──────────────────────────────────────────────────────────────
