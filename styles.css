@@ -767,6 +767,49 @@ button.district-label:active {
   color: #1a7a45;
 }
 
+/* 라디오 그룹 (주차 선택) */
+.radio-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* SNS 링크 뱃지 */
+.sns-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 160px;
+  text-decoration: none;
+  color: var(--muted);
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(88, 59, 39, 0.12);
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.sns-link:hover {
+  border-color: rgba(200, 60, 160, 0.35);
+  background: rgba(255, 240, 252, 0.85);
+  color: #a02080;
+}
+
+.sns-icon {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  border-radius: 4px;
+}
+
+.sns-handle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* 제보자 이름 뱃지 */
 .author-badge {
   display: inline-flex;
