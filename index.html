@@ -50,7 +50,7 @@
             <button class="icon-btn" id="toggleViewButton" type="button">리스트 보기</button>
           </div>
           <p class="map-status" id="mapStatus"></p>
-          <div class="map-area-switch" id="areaFilters"></div>
+          <div class="map-region-switch" id="regionFilters"></div>
           <div class="map-stage" id="mapStage" aria-label="커스텀 지역 지도"></div>
         </section>
 
@@ -75,18 +75,11 @@
         </div>
 
         <form class="submission-form" id="submissionForm">
-          <div class="place-search-wrap">
-            <label>
-              카카오맵 검색 <span class="place-search-hint">검색 후 선택하면 자동 입력돼요</span>
-              <input id="placeSearchInput" type="search" placeholder="매장명으로 검색...">
-            </label>
-            <ul class="place-dropdown" id="placeDropdown" hidden></ul>
-          </div>
-
           <label>
             매장명
-            <input name="name" type="text" maxlength="40" required placeholder="예: 아키바샵 홍대점">
+            <input id="nameInput" name="name" type="text" maxlength="40" required placeholder="예: 아키바샵 홍대점" autocomplete="off">
           </label>
+          <p id="nameError" class="name-error" aria-live="polite" hidden></p>
 
           <label>
             지역
@@ -310,8 +303,6 @@
     </article>
   </template>
 
-  <!-- 카카오맵 SDK (autoload=false → kakao.maps.load() 콜백 후 앱 시작) -->
-  <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=5e42d75fca65b3e13e8fde87acfca5fe&libraries=services&autoload=false"></script>
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
