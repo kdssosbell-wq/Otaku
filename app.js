@@ -511,7 +511,9 @@ function renderApproved() {
       : "전체";
   elements.mapStatus.textContent = `${statusLabel} · 승인 매장 ${filtered.length}곳`;
 
-  filtered.forEach((spot) => elements.approvedList.appendChild(createSpotCard(spot)));
+  [...filtered]
+    .sort((a, b) => a.name.localeCompare(b.name, "ko"))
+    .forEach((spot) => elements.approvedList.appendChild(createSpotCard(spot)));
 
   if (!filtered.length) {
     const empty = document.createElement("article");
