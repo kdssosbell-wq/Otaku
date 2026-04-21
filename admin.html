@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>관리자 로그인 · 오타쿠 지도</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Pretendard:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    body {
+      min-height: 100svh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg, #0d0d10);
+      padding: 1.5rem;
+    }
+
+    .login-card {
+      width: 100%;
+      max-width: 380px;
+      background: var(--surface, #1a1a1f);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 20px;
+      padding: 2.5rem 2rem 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+
+    .login-card .eyebrow {
+      margin-bottom: -.5rem;
+    }
+
+    .login-card h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.5rem;
+      color: var(--text, #f0f0f5);
+      margin: 0;
+    }
+
+    .login-card > p {
+      font-size: .875rem;
+      color: var(--muted, #888);
+      margin: -.5rem 0 .25rem;
+    }
+
+    .login-form {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .login-form label {
+      display: flex;
+      flex-direction: column;
+      gap: .4rem;
+      font-size: .85rem;
+      color: var(--muted, #888);
+      font-weight: 500;
+    }
+
+    .login-form input {
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 10px;
+      padding: .7rem 1rem;
+      color: var(--text, #f0f0f5);
+      font-size: .95rem;
+      font-family: 'Pretendard', sans-serif;
+      transition: border-color .2s;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .login-form input:focus {
+      outline: none;
+      border-color: var(--accent, #ef5b2a);
+    }
+
+    .login-error {
+      font-size: .82rem;
+      color: #ff6b6b;
+      min-height: 1.2em;
+      font-weight: 500;
+    }
+
+    .login-card .primary-btn {
+      width: 100%;
+      padding: .85rem 1rem;
+      font-size: 1rem;
+    }
+
+    .login-card .primary-btn:disabled {
+      opacity: .55;
+      cursor: not-allowed;
+    }
+
+    .back-link {
+      text-align: center;
+      font-size: .82rem;
+      color: var(--muted, #888);
+      text-decoration: none;
+      display: block;
+      transition: color .2s;
+    }
+
+    .back-link:hover {
+      color: var(--text, #f0f0f5);
+    }
+  </style>
+</head>
+<body>
+  <div class="login-card">
+    <p class="eyebrow">Admin Access</p>
+    <h1>관리자 로그인</h1>
+    <p>오타쿠 지도 관리자 전용 페이지입니다.</p>
+
+    <form class="login-form" id="loginForm" autocomplete="on" novalidate>
+      <label>
+        이메일
+        <input id="emailInput" type="email" autocomplete="email" required placeholder="example@email.com">
+      </label>
+      <label>
+        비밀번호
+        <input id="passwordInput" type="password" autocomplete="current-password" required placeholder="비밀번호 입력">
+      </label>
+      <p class="login-error" id="loginError" aria-live="polite"></p>
+      <button class="primary-btn" type="submit" id="loginSubmitBtn">로그인</button>
+    </form>
+
+    <a class="back-link" href="index.html">← 지도로 돌아가기</a>
+  </div>
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey:            "AIzaSyDXHbzcKG9hFFLTHWbwWai0nemhTNJaVOc",
+      authDomain:        "otaku-map-29d8b.firebaseapp.com",
+      projectId:         "otaku-map-29d8b",
+      storageBucket:     "otaku-map-29d8b.firebasestorage.app",
+      messagingSenderId: "227268562859",
+      appId:             "1:227268562859:web:ab842e7c9e3c5763628cee",
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+
+    // 이미 로그인된 경우 바로 이동
+    auth.onAuthStateChanged((user) => {
+      if (user) {
+        window.location.href = "index.html#admin";
+      }
+    });
+
+    const form       = document.getElementById("loginForm");
+    const errEl      = document.getElementById("loginError");
+    const submitBtn  = document.getElementById("loginSubmitBtn");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email    = document.getElementById("emailInput").value.trim();
+      const password = document.getElementById("passwordInput").value;
+      errEl.textContent = "";
+      submitBtn.disabled = true;
+      submitBtn.textContent = "로그인 중…";
+
+      try {
+        await auth.signInWithEmailAndPassword(email, password);
+        // 성공 → 관리 탭으로 이동
+        window.location.href = "index.html#admin";
+      } catch (err) {
+        const code = err.code || "";
+        if (
+          code === "auth/wrong-password" ||
+          code === "auth/user-not-found" ||
+          code === "auth/invalid-credential" ||
+          code === "auth/invalid-email"
+        ) {
+          errEl.textContent = "이메일 또는 비밀번호가 올바르지 않습니다.";
+        } else if (code === "auth/too-many-requests") {
+          errEl.textContent = "로그인 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.";
+        } else {
+          errEl.textContent = "로그인 중 오류가 발생했습니다.";
+          console.error(err);
+        }
+        submitBtn.disabled = false;
+        submitBtn.textContent = "로그인";
+      }
+    });
+
+    // 입력 중 에러 메시지 지우기
+    document.getElementById("emailInput").addEventListener("input", () => { errEl.textContent = ""; });
+    document.getElementById("passwordInput").addEventListener("input", () => { errEl.textContent = ""; });
+  </script>
+</body>
+</html>
