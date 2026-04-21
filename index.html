@@ -4,18 +4,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>오타쿠 지도</title>
-  <meta name="description" content="제일복권, 피규어, 가챠 파는 곳을 유저가 직접 제보하고, 관리자가 승인하면 지도와 매장 리스트에 반영되는 모바일 전용 프로토타입입니다.">
+  <meta name="description" content="제일복권, 피규어, 가챠 파는 곳을 유저가 직접 제보하고, 관리자가 승인하면 지도와 매장 리스트에 반영됩니다.">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="오타쿠 지도">
   <meta property="og:url" content="https://kdssosbell-wq.github.io/Otaku/">
   <meta property="og:title" content="오타쿠 지도">
-  <meta property="og:description" content="제일복권, 피규어, 가챠 파는 곳을 유저가 직접 제보하고, 관리자가 승인하면 지도와 매장 리스트에 반영되는 모바일 전용 프로토타입입니다.">
+  <meta property="og:description" content="제일복권, 피규어, 가챠 파는 곳을 유저가 직접 제보하고, 관리자가 승인하면 지도와 매장 리스트에 반영됩니다.">
   <meta property="og:image" content="https://i.postimg.cc/xjKJqVh4/op-image.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="오타쿠 지도">
-  <meta name="twitter:description" content="제일복권, 피규어, 가챠 파는 곳을 유저가 직접 제보하고, 관리자가 승인하면 지도와 매장 리스트에 반영되는 모바일 전용 프로토타입입니다.">
+  <meta name="twitter:description" content="제일복권, 피규어, 가챠 파는 곳을 유저가 직접 제보하고, 관리자가 승인하면 지도와 매장 리스트에 반영됩니다.">
   <meta name="twitter:image" content="https://i.postimg.cc/xjKJqVh4/op-image.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -26,11 +26,12 @@
   <div class="app-shell">
     <header class="hero">
       <div class="hero__badge">Otaku Spot Map</div>
-      <h1>오타쿠 지도</h1>
-      <p>제일복권, 피규어, 가챠 파는 곳을 유저가 직접 제보하고, 관리자가 승인하면 지도와 매장 리스트에 반영되는 모바일 전용 프로토타입입니다.</p>
+      <h1>오타쿠 지도 🗺️</h1>
+      <p>제일복권, 피규어, 가챠 파는 곳을 유저가 직접 제보하고, 관리자가 승인하면 지도와 매장 리스트에 반영됩니다.</p>
     </header>
 
     <main class="phone-frame">
+      <!-- ── 지도 탭 ── -->
       <section class="panel panel--explore active" data-panel="explore">
         <div class="search-card">
           <label class="sr-only" for="searchInput">매장 검색</label>
@@ -39,6 +40,7 @@
         </div>
 
         <div class="chip-row" id="categoryFilters"></div>
+
         <section class="map-card">
           <div class="map-card__header">
             <div>
@@ -47,10 +49,8 @@
             </div>
             <button class="icon-btn" id="toggleViewButton" type="button">리스트 보기</button>
           </div>
-
-          <p class="map-status" id="mapStatus">제보자가 직접 찍은 위치를 기반으로 핀이 표시됩니다.</p>
+          <p class="map-status" id="mapStatus"></p>
           <div class="map-area-switch" id="areaFilters"></div>
-
           <div class="map-stage" id="mapStage" aria-label="커스텀 지역 지도"></div>
         </section>
 
@@ -66,6 +66,7 @@
         </section>
       </section>
 
+      <!-- ── 제보 탭 ── -->
       <section class="panel panel--submit" data-panel="submit">
         <div class="section-header">
           <p class="eyebrow">Community Submission</p>
@@ -105,6 +106,29 @@
           </label>
 
           <label>
+            휴무일
+            <div class="checkbox-grid checkbox-grid--days">
+              <label class="checkbox-item"><input type="checkbox" name="closedDays" value="mon"><span>월</span></label>
+              <label class="checkbox-item"><input type="checkbox" name="closedDays" value="tue"><span>화</span></label>
+              <label class="checkbox-item"><input type="checkbox" name="closedDays" value="wed"><span>수</span></label>
+              <label class="checkbox-item"><input type="checkbox" name="closedDays" value="thu"><span>목</span></label>
+              <label class="checkbox-item"><input type="checkbox" name="closedDays" value="fri"><span>금</span></label>
+              <label class="checkbox-item"><input type="checkbox" name="closedDays" value="sat"><span>토</span></label>
+              <label class="checkbox-item"><input type="checkbox" name="closedDays" value="sun"><span>일</span></label>
+            </div>
+          </label>
+
+          <label>
+            SNS
+            <input name="sns" type="text" maxlength="80" placeholder="예: @otakuspot_hongdae">
+          </label>
+
+          <label>
+            전화번호
+            <input name="phone" type="tel" maxlength="20" placeholder="예: 02-1234-5678">
+          </label>
+
+          <label>
             제보자 닉네임
             <input name="author" type="text" maxlength="20" placeholder="예: 원덕후42">
           </label>
@@ -113,11 +137,12 @@
         </form>
       </section>
 
+      <!-- ── 관리 탭 ── -->
       <section class="panel panel--admin" data-panel="admin">
         <div class="section-header">
           <p class="eyebrow">Admin Review</p>
           <h2>승인 대기함</h2>
-          <p>관리자는 유저가 찍은 위치와 설명을 보고 승인 또는 반려할 수 있습니다.</p>
+          <p>제보 내용을 검토하고 승인, 수정, 또는 반려할 수 있습니다.</p>
         </div>
 
         <div class="admin-summary">
@@ -155,14 +180,7 @@
       <h2>관리자 인증</h2>
       <p class="admin-modal__desc">관리자 비밀번호를 입력해 주세요.</p>
       <form id="adminPasswordForm" autocomplete="off">
-        <input
-          id="adminPasswordInput"
-          type="password"
-          placeholder="비밀번호 입력"
-          maxlength="30"
-          required
-          aria-label="관리자 비밀번호"
-        >
+        <input id="adminPasswordInput" type="password" placeholder="비밀번호 입력" maxlength="30" required aria-label="관리자 비밀번호">
         <p class="admin-modal__error" id="adminPasswordError" aria-live="polite"></p>
         <div class="admin-modal__actions">
           <button type="button" class="ghost-btn" id="adminModalCancel">취소</button>
@@ -172,6 +190,45 @@
     </div>
   </div>
 
+  <!-- 제보 수정 모달 -->
+  <div class="admin-modal-overlay" id="editModalOverlay" role="dialog" aria-modal="true" aria-label="제보 수정">
+    <div class="admin-modal admin-modal--wide">
+      <p class="eyebrow">Edit Submission</p>
+      <h2>제보 수정</h2>
+      <form id="editForm" autocomplete="off">
+        <input type="hidden" id="editEntryId">
+        <label>매장명<input id="editName" type="text" maxlength="40" required></label>
+        <label>지역<select id="editArea"></select></label>
+        <label>주소<input id="editAddress" type="text" maxlength="80" required></label>
+        <label>
+          취급 카테고리
+          <div class="checkbox-grid" id="editCategoryCheckboxes"></div>
+        </label>
+        <label>한줄 설명<textarea id="editDescription" rows="3" maxlength="180"></textarea></label>
+        <label>운영 정보<input id="editHours" type="text" maxlength="30"></label>
+        <label>
+          휴무일
+          <div class="checkbox-grid checkbox-grid--days" id="editClosedDays">
+            <label class="checkbox-item"><input type="checkbox" name="editClosedDays" value="mon"><span>월</span></label>
+            <label class="checkbox-item"><input type="checkbox" name="editClosedDays" value="tue"><span>화</span></label>
+            <label class="checkbox-item"><input type="checkbox" name="editClosedDays" value="wed"><span>수</span></label>
+            <label class="checkbox-item"><input type="checkbox" name="editClosedDays" value="thu"><span>목</span></label>
+            <label class="checkbox-item"><input type="checkbox" name="editClosedDays" value="fri"><span>금</span></label>
+            <label class="checkbox-item"><input type="checkbox" name="editClosedDays" value="sat"><span>토</span></label>
+            <label class="checkbox-item"><input type="checkbox" name="editClosedDays" value="sun"><span>일</span></label>
+          </div>
+        </label>
+        <label>SNS<input id="editSns" type="text" maxlength="80"></label>
+        <label>전화번호<input id="editPhone" type="tel" maxlength="20"></label>
+        <div class="admin-modal__actions">
+          <button type="button" class="ghost-btn" id="editModalCancel">취소</button>
+          <button type="submit" class="primary-btn">저장</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 매장 카드 템플릿 -->
   <template id="spotCardTemplate">
     <article class="spot-card">
       <div class="spot-card__top">
@@ -187,9 +244,11 @@
         <span class="spot-card__hours"></span>
         <span class="spot-card__author"></span>
       </div>
+      <div class="spot-card__extra"></div>
     </article>
   </template>
 
+  <!-- 관리 대기 카드 템플릿 -->
   <template id="pendingCardTemplate">
     <article class="pending-card">
       <div class="pending-card__head">
@@ -203,6 +262,7 @@
       <div class="tag-row"></div>
       <div class="pending-card__actions">
         <button class="ghost-btn js-reject" type="button">반려</button>
+        <button class="ghost-btn js-edit" type="button">수정</button>
         <button class="primary-btn js-approve" type="button">승인</button>
       </div>
     </article>
