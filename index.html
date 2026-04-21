@@ -71,7 +71,7 @@
         <div class="section-header">
           <p class="eyebrow">Community Submission</p>
           <h2>매장 제보하기</h2>
-          <p>지역을 선택하면 위치가 자동으로 지정됩니다. 관리자가 승인하면 지도에 매장이 표시됩니다.</p>
+          <p>관리자가 승인하면 지도에 매장이 표시됩니다.</p>
         </div>
 
         <form class="submission-form" id="submissionForm">
@@ -231,12 +231,10 @@
   <!-- 매장 카드 템플릿 -->
   <template id="spotCardTemplate">
     <article class="spot-card">
-      <div class="spot-card__top">
-        <div>
-          <h3></h3>
-          <p class="spot-card__meta"></p>
-        </div>
-        <span class="pill"></span>
+      <h3></h3>
+      <div class="spot-card__addr-row">
+        <p class="spot-card__meta"></p>
+        <button class="addr-copy-btn" type="button" aria-label="주소 복사">복사</button>
       </div>
       <p class="spot-card__desc"></p>
       <div class="tag-row"></div>
