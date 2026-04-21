@@ -344,12 +344,18 @@ select {
 .list-card__header,
 .spot-card__top,
 .pending-card__head,
-.spot-card__foot,
 .pin-card__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+}
+
+.spot-card__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .map-status {
@@ -530,22 +536,38 @@ button.district-label:active {
 
 .spot-card__meta,
 .pending-card__meta,
-.spot-card__desc,
-.pending-card__desc,
-.spot-card__hours,
-.spot-card__author,
 .pending-card__coords {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.spot-card__desc,
+.pending-card__desc {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.55;
+}
+
+.spot-card__hours {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.spot-card__author {
   margin: 0;
   color: var(--muted);
 }
 
 .tag {
   display: inline-flex;
-  padding: 8px 12px;
+  padding: 5px 11px;
   border-radius: 999px;
   background: rgba(239, 91, 42, 0.1);
   color: var(--accent-strong);
-  font-size: 0.84rem;
+  font-size: 0.78rem;
   font-weight: 700;
 }
 
@@ -936,11 +958,13 @@ button.district-label:active {
 
 .spot-card__body {
   display: none;
-  margin-top: 10px;
+  margin-top: 12px;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .spot-card.is-open .spot-card__body {
-  display: block;
+  display: flex;
 }
 
 /* 주소 행 — 주소 텍스트 + 복사 버튼 */
@@ -948,13 +972,13 @@ button.district-label:active {
   display: flex;
   align-items: flex-start;
   gap: 8px;
-  margin: 4px 0 10px;
+  margin: 0;
 }
 
 .spot-card__addr-row .spot-card__meta {
   flex: 1;
   margin: 0;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   line-height: 1.5;
 }
 
@@ -999,11 +1023,11 @@ button.district-label:active {
   max-width: 160px;
   text-decoration: none;
   color: var(--muted);
-  padding: 6px 10px;
+  padding: 5px 10px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.72);
   border: 1px solid rgba(88, 59, 39, 0.12);
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   font-weight: 500;
   transition: border-color 0.15s, background 0.15s;
 }
@@ -1064,7 +1088,7 @@ button.district-label:active {
   border-radius: 999px;
   background: rgba(88, 59, 39, 0.07);
   border: 1px solid rgba(88, 59, 39, 0.1);
-  font-size: 0.75rem;
+  font-size: 0.78rem;
   font-weight: 600;
   color: var(--muted);
   white-space: nowrap;
@@ -1075,18 +1099,18 @@ button.district-label:active {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-top: 8px;
+  margin-top: 0;
 }
 
 .spot-card__extra-item {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 6px 10px;
+  padding: 5px 10px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.72);
   border: 1px solid rgba(88, 59, 39, 0.12);
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   color: var(--muted);
   font-weight: 500;
 }
