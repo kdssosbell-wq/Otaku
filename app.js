@@ -502,11 +502,23 @@ function renderAreaMap(container, areaId, spots, draftPin = null) {
 function createSpotCard(spot) {
   const f = elements.spotCardTemplate.content.cloneNode(true);
   f.querySelector("h3").textContent               = spot.name;
-  f.querySelector(".spot-card__meta").textContent  = `${areaLabel(spot.area)} · ${spot.address}`;
-  f.querySelector(".pill").textContent             = spot.distance;
+  f.querySelector(".spot-card__meta").textContent  = spot.address;
   f.querySelector(".spot-card__desc").textContent  = spot.description;
   f.querySelector(".spot-card__hours").textContent = `운영 ${spot.hours}`;
-  f.querySelector(".spot-card__author").textContent = `등록 ${spot.author}`;
+  f.querySelector(".spot-card__author").innerHTML  = `<span class="author-badge">👤 ${spot.author}</span>`;
+
+  // 주소 복사 버튼
+  f.querySelector(".addr-copy-btn").addEventListener("click", (e) => {
+    navigator.clipboard.writeText(spot.address).then(() => {
+      const btn = e.currentTarget;
+      btn.textContent = "✓ 복사됨";
+      btn.classList.add("addr-copy-btn--done");
+      setTimeout(() => {
+        btn.textContent = "복사";
+        btn.classList.remove("addr-copy-btn--done");
+      }, 2000);
+    });
+  });
 
   const tags = f.querySelector(".tag-row");
   spot.categories.forEach((id) => tags.appendChild(createTag(id)));
