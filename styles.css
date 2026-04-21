@@ -177,6 +177,76 @@ select {
   color: var(--accent-strong);
 }
 
+/* 대분류 지역 스위치 */
+.map-region-switch {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+  width: 100%;
+  max-width: 100%;
+  margin: 14px 0 0;
+  padding: 6px 12px 8px;
+  border: 1px solid rgba(88, 59, 39, 0.1);
+  border-radius: 22px;
+  background: rgba(255, 250, 244, 0.9);
+  box-shadow: 0 10px 24px rgba(79, 49, 23, 0.08);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-behavior: smooth;
+  scroll-snap-type: x proximity;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x;
+  scrollbar-width: none;
+}
+
+.map-region-switch::-webkit-scrollbar { display: none; }
+
+.map-region-switch .chip {
+  flex: 0 0 auto;
+  padding: 7px 14px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  scroll-snap-align: center;
+}
+
+.map-region-switch .chip.active {
+  background: rgba(239, 91, 42, 0.14);
+  border-color: rgba(239, 91, 42, 0.2);
+  color: var(--accent-strong);
+}
+
+/* 대분류 매장 수 뱃지 */
+.region-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: rgba(239, 91, 42, 0.13);
+  color: var(--accent-strong);
+  font-size: 0.62rem;
+  font-weight: 800;
+  margin-left: 3px;
+  vertical-align: middle;
+  line-height: 1;
+}
+
+.chip.active .region-count {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* 소분류 지역 스위치 */
 .map-area-switch {
   position: relative;
   z-index: 2;
@@ -186,7 +256,7 @@ select {
   flex-wrap: nowrap;
   width: 100%;
   max-width: 100%;
-  margin: 14px 0 -8px;
+  margin: 6px 0 -8px;
   padding: 8px 14px 10px;
   border: 1px solid rgba(88, 59, 39, 0.1);
   border-radius: 22px;
@@ -279,87 +349,39 @@ select {
   min-height: 360px;
   margin-top: 14px;
   border-radius: 22px;
-  background: #f5ebe0;
+  background:
+    radial-gradient(ellipse at 30% 35%, rgba(239, 91, 42, 0.07) 0%, transparent 55%),
+    radial-gradient(ellipse at 72% 62%, rgba(45, 108, 223, 0.06) 0%, transparent 50%),
+    linear-gradient(180deg, #fdf7ef 0%, #f5ebe0 100%);
 }
 
-/* 카카오맵 글로우 핀 마커 */
-.map-pulse-marker {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(239, 91, 42, 1) 30%, rgba(239, 91, 42, 0.2) 100%);
-  box-shadow: 0 0 0 0 rgba(239, 91, 42, 0.5);
-  cursor: pointer;
-  animation: map-pulse 2s infinite;
-}
-
-@keyframes map-pulse {
-  0%   { box-shadow: 0 0 0 0   rgba(239, 91, 42, 0.5); }
-  70%  { box-shadow: 0 0 0 10px rgba(239, 91, 42, 0);   }
-  100% { box-shadow: 0 0 0 0   rgba(239, 91, 42, 0);   }
-}
-
-/* 카카오 장소 검색 드롭다운 */
-.place-search-wrap {
-  position: relative;
-}
-
-.place-search-label {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  font-weight: 600;
-}
-
-.place-search-hint {
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--muted);
-  margin-left: 6px;
-}
-
-.place-dropdown {
+.map-stage::before,
+.picker-map::before {
+  content: "";
   position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  z-index: 20;
-  margin: 0;
-  padding: 6px 0;
-  list-style: none;
-  background: var(--surface-strong);
-  border: 1px solid var(--line);
-  border-radius: 18px;
-  box-shadow: 0 12px 32px rgba(79, 49, 23, 0.14);
-  overflow: hidden;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(88, 59, 39, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(88, 59, 39, 0.05) 1px, transparent 1px);
+  background-size: 28px 28px;
+  pointer-events: none;
+  z-index: 0;
 }
 
-.place-dropdown__item {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 10px 16px;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.place-dropdown__item:hover {
-  background: rgba(239, 91, 42, 0.07);
-}
-
-.place-dropdown__name {
-  font-weight: 700;
-  font-size: 0.9rem;
-  color: var(--text);
-}
-
-.place-dropdown__addr {
-  font-size: 0.78rem;
-  color: var(--muted);
+/* 히트맵 글로우 블롭 */
+.map-blob {
+  position: absolute;
+  z-index: 1;
+  border-radius: 50%;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  filter: blur(18px);
+  transition: background 0.5s ease;
 }
 
 .district-shape {
   position: absolute;
+  z-index: 2;
   border-radius: 999px;
   border: 1px dashed rgba(88, 59, 39, 0.16);
   background: rgba(255, 255, 255, 0.26);
@@ -405,10 +427,32 @@ button.district-label:active {
   opacity: 1 !important;
 }
 
+/* 지역 라벨 내 매장 수 뱃지 */
+.map-label-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 17px;
+  height: 17px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.6rem;
+  font-weight: 800;
+  margin-left: 4px;
+  vertical-align: middle;
+  line-height: 1;
+}
+
+.district-label.active .map-label-count {
+  background: var(--accent-strong);
+}
+
 .map-pin,
 .picker-pin {
   position: absolute;
-  z-index: 2;
+  z-index: 1;
   width: 18px;
   height: 18px;
   border-radius: 50% 50% 50% 0;
@@ -932,6 +976,34 @@ button.district-label:active {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* 매장명 중복 오류 메시지 */
+.name-error {
+  margin: -8px 0 0;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: rgba(181, 47, 47, 0.08);
+  border: 1px solid rgba(181, 47, 47, 0.22);
+  color: #b52f2f;
+  font-size: 0.88rem;
+  font-weight: 700;
+  animation: shake 0.32s ease;
+}
+
+@keyframes shake {
+  0%   { transform: translateX(0); }
+  20%  { transform: translateX(-6px); }
+  40%  { transform: translateX(6px); }
+  60%  { transform: translateX(-4px); }
+  80%  { transform: translateX(4px); }
+  100% { transform: translateX(0); }
+}
+
+.name-input--error {
+  border-color: rgba(181, 47, 47, 0.5) !important;
+  background: rgba(181, 47, 47, 0.04) !important;
+  color: #b52f2f;
 }
 
 /* 제보자 이름 뱃지 */
