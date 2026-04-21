@@ -75,12 +75,17 @@ const AREAS = [
     shapes: [{ top: "86%", left: "34%", width: "22%", height: "12%" }],
     labelPos: { top: "89%", left: "38%" },
   },
+  {
+    id: "cheonan", label: "천안",
+    shapes: [{ top: "86%", left: "60%", width: "22%", height: "12%" }],
+    labelPos: { top: "89%", left: "64%" },
+  },
 ];
 
 // ── 대분류 지역 정의 ──────────────────────────────────────────────────────
 const REGIONS = [
   { id: "seoul",    label: "서울",   areaIds: ["hongdae","hapjeong","sinchon","yongsan","gangnam","geondae"] },
-  { id: "gyeonggi", label: "경기도", areaIds: ["suwon","osan","dongtan","pyeongtaek"] },
+  { id: "gyeonggi", label: "경기도", areaIds: ["suwon","osan","dongtan","pyeongtaek","cheonan"] },
   { id: "busan",    label: "부산",   areaIds: [] },
   { id: "daejeon",  label: "대전",   areaIds: [] },
 ];
@@ -507,28 +512,52 @@ function renderAreaMap(container, activeAreaId, spots) {
   container.innerHTML = "";
 
   // 현재 대분류에 따라 보여줄 지역 목록 결정
-  const activeRegion  = REGIONS.find(r => r.id === state.activeRegion);
-  const visibleAreas  = activeRegion
+  const activeRegion = REGIONS.find(r => r.id === state.activeRegion);
+  const visibleAreas = activeRegion
     ? AREAS.filter(a => activeRegion.areaIds.includes(a.id))
     : AREAS;
 
   // 지역별 승인 매장 수 (히트맵용)
   const countMap = {};
-  AREAS.forEach((a) => { countMap[a.id] = 0; });
-  state.approved.forEach((s) => { if (countMap[s.area] !== undefined) countMap[s.area]++; });
+  AREAS.forEach(a => { countMap[a.id] = 0; });
+  state.approved.forEach(s => { if (countMap[s.area] !== undefined) countMap[s.area]++; });
   const maxCount = Math.max(1, ...visibleAreas.map(a => countMap[a.id] || 0));
 
-  visibleAreas.forEach((area) => {
+  // ── 위치 정규화: 평균값 기준 + 세로/가로 독립 스케일 ──
+  // 데이터 범위가 좁으면 더 많이 펼치고, 넓으면 그대로 유지
+  const rawTops  = visibleAreas.map(a => parseFloat(a.labelPos.top));
+  const rawLefts = visibleAreas.map(a => parseFloat(a.labelPos.left));
+  const meanT = rawTops.reduce((s,v) => s+v, 0)  / rawTops.length;
+  const meanL = rawLefts.reduce((s,v) => s+v, 0) / rawLefts.length;
+  const rangeT = Math.max(...rawTops)  - Math.min(...rawTops)  || 1;
+  const rangeL = Math.max(...rawLefts) - Math.min(...rawLefts) || 1;
+
+  const SCALE_T = Math.min(2.2, 54 / rangeT);  // 세로 목표 펼침 54%
+  const SCALE_L = Math.min(0.85, 50 / rangeL); // 가로 목표 펼침 50%
+  const CENTER_T = 46, CENTER_L = 36;
+
+  function normPos(top, left) {
+    if (visibleAreas.length <= 1) return [`${CENTER_T}%`, `${CENTER_L}%`];
+    const nt = CENTER_T + (top  - meanT) * SCALE_T;
+    const nl = CENTER_L + (left - meanL) * SCALE_L;
+    return [
+      `${Math.max(12, Math.min(80, nt)).toFixed(1)}%`,
+      `${Math.max(8,  Math.min(66, nl)).toFixed(1)}%`,
+    ];
+  }
+
+  visibleAreas.forEach(area => {
     const count     = countMap[area.id] || 0;
     const intensity = count / maxCount;
     const isActive  = area.id === activeAreaId;
-    const shape     = area.shapes[0];
+
+    const lTop  = parseFloat(area.labelPos.top);
+    const lLeft = parseFloat(area.labelPos.left);
+    const [nTop, nLeft] = normPos(lTop, lLeft);
 
     // ── 히트맵 글로우 블롭 ──
-    const shapeW = parseFloat(shape.width);
-    const shapeH = parseFloat(shape.height);
-    const blobCX = parseFloat(shape.left) + shapeW / 2;
-    const blobCY = parseFloat(shape.top)  + shapeH / 2;
+    const shapeW = parseFloat(area.shapes[0].width);
+    const shapeH = parseFloat(area.shapes[0].height);
     const blobW  = shapeW * (1.5 + intensity * 1.0);
     const blobH  = shapeH * (1.8 + intensity * 1.2);
     const a1 = count === 0 ? 0.035 : 0.13 + intensity * 0.24;
@@ -537,7 +566,7 @@ function renderAreaMap(container, activeAreaId, spots) {
     const blob = document.createElement("div");
     blob.className = "map-blob";
     blob.style.cssText = `
-      left:${blobCX}%; top:${blobCY}%;
+      left:${nLeft}; top:${nTop};
       width:${blobW}%; height:${blobH}%;
       background: radial-gradient(ellipse at center,
         rgba(239,91,42,${a1}) 0%,
@@ -550,7 +579,8 @@ function renderAreaMap(container, activeAreaId, spots) {
     const label = document.createElement("button");
     label.type = "button";
     label.className = `district-label${isActive ? " active" : ""}`;
-    Object.assign(label.style, { top: area.labelPos.top, left: area.labelPos.left });
+    label.style.top  = nTop;
+    label.style.left = nLeft;
     label.innerHTML = count > 0
       ? `${area.label}<span class="map-label-count">${count}</span>`
       : area.label;
@@ -561,13 +591,19 @@ function renderAreaMap(container, activeAreaId, spots) {
     container.appendChild(label);
   });
 
-  // ── 핀 렌더링 ──
-  spots.forEach((spot) => {
+  // ── 핀 렌더링 (정규화된 위치 사용) ──
+  spots.forEach(spot => {
     if (!spot.pin) return;
+    const pinArea = AREAS.find(a => a.id === spot.area);
+    if (!pinArea) return;
+    const [pTop, pLeft] = normPos(
+      parseFloat(pinArea.labelPos.top),
+      parseFloat(pinArea.labelPos.left)
+    );
     const pin = document.createElement("div");
     pin.className = "map-pin";
-    pin.style.left = `${spot.pin.x}%`;
-    pin.style.top  = `${spot.pin.y}%`;
+    pin.style.left = pLeft;
+    pin.style.top  = pTop;
     pin.title = spot.name;
     pin.addEventListener("click", () => focusSpotCard(spot.name));
     container.appendChild(pin);
