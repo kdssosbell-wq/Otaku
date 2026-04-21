@@ -36,11 +36,6 @@ const AREAS = [
     labelPos: { top: "28%", left: "61%" },
   },
   {
-    id: "geondae", label: "건대",
-    shapes: [{ top: "60%", left: "58%", width: "24%", height: "18%" }],
-    labelPos: { top: "68%", left: "62%" },
-  },
-  {
     id: "sinchon", label: "신촌",
     shapes: [{ top: "8%", left: "42%", width: "22%", height: "18%" }],
     labelPos: { top: "10%", left: "46%" },
@@ -49,6 +44,16 @@ const AREAS = [
     id: "yongsan", label: "용산",
     shapes: [{ top: "34%", left: "36%", width: "20%", height: "16%" }],
     labelPos: { top: "38%", left: "40%" },
+  },
+  {
+    id: "gangnam", label: "강남",
+    shapes: [{ top: "46%", left: "8%", width: "22%", height: "16%" }],
+    labelPos: { top: "50%", left: "12%" },
+  },
+  {
+    id: "geondae", label: "건대",
+    shapes: [{ top: "60%", left: "58%", width: "24%", height: "18%" }],
+    labelPos: { top: "68%", left: "62%" },
   },
   {
     id: "osan", label: "오산",
