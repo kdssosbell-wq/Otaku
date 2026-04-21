@@ -675,7 +675,7 @@ function createSpotCard(spot) {
 
   if (spot.sns) {
     const raw = spot.sns.trim();
-    const isNaver = raw.includes("naver");
+    const isNaver = raw.includes("naver") || raw.includes("band");
     const isInsta = raw.includes("instagram") || raw.startsWith("@") || !raw.startsWith("http");
 
     let url, icon, label;
