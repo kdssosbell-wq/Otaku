@@ -667,6 +667,12 @@ button.district-label:active {
   border: 1px solid rgba(88, 59, 39, 0.14);
 }
 
+#toggleViewButton {
+  font-size: 0.78rem;
+  padding: 6px 12px;
+  border-radius: 999px;
+}
+
 .ghost-btn--danger {
   color: #b52f2f;
 }
