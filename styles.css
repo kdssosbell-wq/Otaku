@@ -719,6 +719,13 @@ button.district-label:active {
   border-radius: 12px;
 }
 
+/* 관리 탭 — 대기함 / 승인 완료 구분선 */
+.admin-section-divider {
+  height: 1px;
+  background: var(--line);
+  margin: 8px 0;
+}
+
 /* 주소 행 — 주소 텍스트 + 복사 버튼 */
 .spot-card__addr-row {
   display: flex;
