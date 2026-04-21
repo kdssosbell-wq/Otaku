@@ -156,7 +156,8 @@ const elements = {
   placeDropdown:        document.querySelector("#placeDropdown"),
 };
 
-bootstrap();
+// 카카오 SDK 로딩 완료 후 앱 시작
+kakao.maps.load(() => bootstrap());
 
 // ── 초기화 ────────────────────────────────────────────────────────────────
 function bootstrap() {
@@ -491,14 +492,16 @@ function renderApproved() {
   }
 
   if (showMap) {
-    if (!kakaoMapInitialized) {
-      initKakaoMap();
-    } else {
-      updateKakaoMapArea(state.activeArea);
-      kakaoMap.relayout();
-    }
-    clearKakaoMarkers();
-    filtered.forEach((spot) => geocodeAndPin(spot));
+    requestAnimationFrame(() => {
+      if (!kakaoMapInitialized) {
+        initKakaoMap();
+      } else {
+        updateKakaoMapArea(state.activeArea);
+        kakaoMap.relayout();
+      }
+      clearKakaoMarkers();
+      filtered.forEach((spot) => geocodeAndPin(spot));
+    });
   }
 }
 
