@@ -719,6 +719,62 @@ button.district-label:active {
   border-radius: 12px;
 }
 
+/* 주소 행 — 주소 텍스트 + 복사 버튼 */
+.spot-card__addr-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 4px 0 10px;
+}
+
+.spot-card__addr-row .spot-card__meta {
+  flex: 1;
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.addr-copy-btn {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(88, 59, 39, 0.16);
+  background: rgba(255, 255, 255, 0.8);
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.addr-copy-btn:hover {
+  background: rgba(239, 91, 42, 0.08);
+  border-color: rgba(239, 91, 42, 0.28);
+  color: var(--accent-strong);
+}
+
+.addr-copy-btn--done {
+  background: rgba(34, 139, 80, 0.1);
+  border-color: rgba(34, 139, 80, 0.3);
+  color: #1a7a45;
+}
+
+/* 제보자 이름 뱃지 */
+.author-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  border-radius: 999px;
+  background: rgba(88, 59, 39, 0.07);
+  border: 1px solid rgba(88, 59, 39, 0.1);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
 /* 승인된 매장 카드 — 추가 정보(휴무일·전화·SNS) 영역 */
 .spot-card__extra {
   display: flex;
