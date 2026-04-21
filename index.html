@@ -153,6 +153,7 @@
           <p class="eyebrow">Admin Review</p>
           <h2>승인 대기함</h2>
           <p>제보 내용을 검토하고 승인, 수정, 또는 반려할 수 있습니다.</p>
+          <button class="ghost-btn admin-logout-btn" id="logoutBtn" type="button" hidden>로그아웃</button>
         </div>
 
         <div class="admin-summary">
@@ -194,23 +195,6 @@
         <span>관리</span>
       </button>
     </nav>
-  </div>
-
-  <!-- 관리자 비밀번호 모달 -->
-  <div class="admin-modal-overlay" id="adminModalOverlay" role="dialog" aria-modal="true" aria-label="관리자 인증">
-    <div class="admin-modal">
-      <p class="eyebrow">Admin Access</p>
-      <h2>관리자 인증</h2>
-      <p class="admin-modal__desc">관리자 비밀번호를 입력해 주세요.</p>
-      <form id="adminPasswordForm" autocomplete="off">
-        <input id="adminPasswordInput" type="password" placeholder="비밀번호 입력" maxlength="30" required aria-label="관리자 비밀번호">
-        <p class="admin-modal__error" id="adminPasswordError" aria-live="polite"></p>
-        <div class="admin-modal__actions">
-          <button type="button" class="ghost-btn" id="adminModalCancel">취소</button>
-          <button type="submit" class="primary-btn">확인</button>
-        </div>
-      </form>
-    </div>
   </div>
 
   <!-- 제보 수정 모달 -->
@@ -305,6 +289,7 @@
 
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
   <script src="app.js"></script>
 </body>
