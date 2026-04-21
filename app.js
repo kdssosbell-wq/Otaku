@@ -218,6 +218,7 @@ function bindEvents() {
       closedDays:  selectedClosedDays,
       sns:         elements.editSns.value.trim(),
       phone:       elements.editPhone.value.trim(),
+      parking:     document.querySelector("#editParking input:checked")?.value ?? "",
       distance:    areaLabel(elements.editArea.value),
       pin:         getAreaPin(elements.editArea.value),
     };
@@ -280,6 +281,7 @@ function bindEvents() {
       closedDays:  formData.getAll("closedDays"),
       sns:         formData.get("sns") || "",
       phone:       formData.get("phone") || "",
+      parking:     formData.get("parking") || "",
       author:      formData.get("author") || "익명 덕후",
       distance:    areaLabel(selectedArea),
       pin:         getAreaPin(selectedArea),
@@ -529,17 +531,50 @@ function createSpotCard(spot) {
   const tags = f.querySelector(".tag-row");
   spot.categories.forEach((id) => tags.appendChild(createTag(id)));
 
-  // 추가 정보 (휴무일 / 전화번호 / SNS)
+  // 추가 정보 (휴무일 / 전화번호 / SNS / 주차)
   const extra = f.querySelector(".spot-card__extra");
-  const extraLines = [];
+
   if (spot.closedDays?.length) {
-    extraLines.push(`휴무 ${spot.closedDays.map((d) => DAY_LABELS[d] || d).join("·")}`);
+    const span = document.createElement("span");
+    span.className = "spot-card__extra-item";
+    span.textContent = `휴무 ${spot.closedDays.map((d) => DAY_LABELS[d] || d).join("·")}`;
+    extra.appendChild(span);
   }
-  if (spot.phone) extraLines.push(`📞 ${spot.phone}`);
-  if (spot.sns)   extraLines.push(`📱 ${spot.sns}`);
-  if (extraLines.length) {
-    extra.innerHTML = extraLines.map((l) => `<span class="spot-card__extra-item">${l}</span>`).join("");
+
+  if (spot.phone) {
+    const span = document.createElement("span");
+    span.className = "spot-card__extra-item";
+    span.textContent = `📞 ${spot.phone}`;
+    extra.appendChild(span);
   }
+
+  if (spot.sns) {
+    const raw = spot.sns.trim();
+    const handle = raw.startsWith("http")
+      ? raw.replace(/.*instagram\.com\/([^/?#]+).*/, "$1")
+      : raw.replace(/^@/, "");
+    const url = raw.startsWith("http") ? raw : `https://www.instagram.com/${handle}`;
+    const a = document.createElement("a");
+    a.href = url;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    a.className = "spot-card__extra-item sns-link";
+    a.innerHTML = `<img src="instargram.svg" class="sns-icon" alt="Instagram"><span class="sns-handle">@${handle}</span>`;
+    extra.appendChild(a);
+  }
+
+  if (spot.parking === "available") {
+    const span = document.createElement("span");
+    span.className = "spot-card__extra-item";
+    span.textContent = "🚗 주차 가능";
+    extra.appendChild(span);
+  } else if (spot.parking === "unavailable") {
+    const span = document.createElement("span");
+    span.className = "spot-card__extra-item";
+    span.textContent = "🚌 권장";
+    extra.appendChild(span);
+  }
+
   return f;
 }
 
@@ -697,6 +732,11 @@ function openEditModal(entry, collection = "pending") {
   // 휴무일 체크박스
   document.querySelectorAll("#editClosedDays input").forEach((cb) => {
     cb.checked = (entry.closedDays || []).includes(cb.value);
+  });
+
+  // 주차 라디오
+  document.querySelectorAll("#editParking input[type=radio]").forEach((rb) => {
+    rb.checked = rb.value === (entry.parking || "");
   });
 
   // 모달 제목 구분
