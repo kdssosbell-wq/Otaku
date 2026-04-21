@@ -675,16 +675,30 @@ function createSpotCard(spot) {
 
   if (spot.sns) {
     const raw = spot.sns.trim();
-    const handle = raw.startsWith("http")
-      ? raw.replace(/.*instagram\.com\/([^/?#]+).*/, "$1")
-      : raw.replace(/^@/, "");
-    const url = raw.startsWith("http") ? raw : `https://www.instagram.com/${handle}`;
+    const isNaver = raw.includes("naver");
+    const isInsta = raw.includes("instagram") || raw.startsWith("@") || !raw.startsWith("http");
+
+    let url, icon, label;
+
+    if (isNaver) {
+      url   = raw.startsWith("http") ? raw : `https://cafe.naver.com/${raw.replace(/^@/, "")}`;
+      icon  = "naver.png";
+      label = raw.replace(/.*cafe\.naver\.com\/([^/?#]+).*/, "$1").replace(/^@/, "");
+    } else {
+      const handle = raw.startsWith("http")
+        ? raw.replace(/.*instagram\.com\/([^/?#]+).*/, "$1")
+        : raw.replace(/^@/, "");
+      url   = raw.startsWith("http") ? raw : `https://www.instagram.com/${handle}`;
+      icon  = "instargram.png";
+      label = handle;
+    }
+
     const a = document.createElement("a");
     a.href = url;
     a.target = "_blank";
     a.rel = "noopener noreferrer";
     a.className = "spot-card__extra-item sns-link";
-    a.innerHTML = `<img src="instargram.png" class="sns-icon" alt="Instagram"><span class="sns-handle">@${handle}</span>`;
+    a.innerHTML = `<img src="${icon}" class="sns-icon" alt="SNS"><span class="sns-handle">@${label}</span>`;
     extra.appendChild(a);
   }
 
