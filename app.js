@@ -92,6 +92,15 @@ const AREAS = [
   },
 ];
 
+// ── 대전 구별 지도 위치 ───────────────────────────────────────────────────
+const DAEJEON_GU_POS = {
+  "유성구": { top: "14%", left: "12%" },
+  "서구":   { top: "68%", left: "10%" },
+  "중구":   { top: "60%", left: "42%" },
+  "동구":   { top: "22%", left: "64%" },
+  "대덕구": { top: "34%", left: "76%" },
+};
+
 // ── 대분류 지역 정의 ──────────────────────────────────────────────────────
 const REGIONS = [
   { id: "seoul",    label: "서울",   areaIds: ["hongdae","hapjeong","sinchon","yongsan","gangnam","geondae"] },
@@ -114,6 +123,7 @@ const state = {
   get draftPin()  { return getAreaPin(this.draftArea); },
   adminApprovedQuery: "",
   onlyOpen: false,
+  activeGuFilter: null, // 대전 구 필터
 };
 
 // ── DOM 요소 참조 ─────────────────────────────────────────────────────────
@@ -455,8 +465,9 @@ function renderRegionFilters() {
         state.activeRegion = region.id;
         state.activeArea   = null;
       }
-      // 지역 탭 전환 시 영업중 필터 초기화
+      // 지역 탭 전환 시 영업중·구 필터 초기화
       state.onlyOpen = false;
+      state.activeGuFilter = null;
       if (elements.openNowToggle) elements.openNowToggle.classList.remove("active");
       renderRegionFilters();
       renderApproved();
@@ -477,13 +488,15 @@ function renderCategoryCheckboxes() {
 
 function renderAreaOptions() {
   elements.submissionArea.innerHTML = "";
-  AREAS.forEach((area) => {
-    const opt = document.createElement("option");
-    opt.value = area.id;
-    opt.textContent = area.label;
-    if (area.id === state.draftArea) opt.selected = true;
-    elements.submissionArea.appendChild(opt);
-  });
+  [...AREAS]
+    .sort((a, b) => a.label.localeCompare(b.label, "ko"))
+    .forEach((area) => {
+      const opt = document.createElement("option");
+      opt.value = area.id;
+      opt.textContent = area.label;
+      if (area.id === state.draftArea) opt.selected = true;
+      elements.submissionArea.appendChild(opt);
+    });
 }
 
 function populateEditAreaOptions() {
@@ -538,6 +551,85 @@ function renderApproved() {
   if (showMap) renderAreaMap(elements.mapStage, state.activeArea, filtered);
 }
 
+// ── 대전 구별 지도 렌더링 ─────────────────────────────────────────────────
+function renderDaejeonMap(container, spots) {
+  // 전체 대전 승인 매장에서 구별로 그룹화 (카운트용: 현재 필터 기준)
+  const allDaejeon = state.approved.filter(s =>
+    (s.area === "daejeon") &&
+    (state.activeCategory === "all" || s.categories.includes(state.activeCategory)) &&
+    (!state.onlyOpen || isOpenNow(s))
+  );
+
+  const guGroups = {};
+  allDaejeon.forEach(s => {
+    const gu = extractGu(s.address);
+    if (gu && DAEJEON_GU_POS[gu]) {
+      if (!guGroups[gu]) guGroups[gu] = [];
+      guGroups[gu].push(s);
+    }
+  });
+
+  const guEntries = Object.entries(guGroups);
+  if (!guEntries.length) {
+    const msg = document.createElement("p");
+    msg.style.cssText = "position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);color:var(--muted);font-size:.85rem;text-align:center;margin:0;";
+    msg.textContent = "제보된 매장이 없습니다";
+    container.appendChild(msg);
+    return;
+  }
+
+  const maxCount = Math.max(1, ...guEntries.map(([, ss]) => ss.length));
+
+  guEntries.forEach(([gu, guSpots]) => {
+    const pos       = DAEJEON_GU_POS[gu];
+    const count     = guSpots.length;
+    const intensity = count / maxCount;
+    const isActive  = state.activeGuFilter === gu;
+    const a1 = 0.13 + intensity * 0.24;
+    const a2 = 0.05 + intensity * 0.10;
+
+    // 히트맵 블롭
+    const blob = document.createElement("div");
+    blob.className = "map-blob";
+    blob.style.cssText = `
+      left:${pos.left}; top:${pos.top};
+      width:${28 + intensity * 16}%; height:${22 + intensity * 16}%;
+      background: radial-gradient(ellipse at center,
+        rgba(239,91,42,${a1}) 0%,
+        rgba(239,91,42,${a2}) 42%,
+        transparent 70%);
+    `;
+    container.appendChild(blob);
+
+    // 구 라벨 버튼
+    const label = document.createElement("button");
+    label.type = "button";
+    label.className = `district-label${isActive ? " active" : ""}`;
+    label.style.top  = pos.top;
+    label.style.left = pos.left;
+    label.innerHTML  = `${gu}<span class="map-label-count">${count}</span>`;
+    label.addEventListener("click", () => {
+      state.activeGuFilter = isActive ? null : gu;
+      renderApproved();
+    });
+    container.appendChild(label);
+  });
+
+  // 핀 렌더링
+  spots.forEach(spot => {
+    const gu = extractGu(spot.address);
+    if (!gu || !DAEJEON_GU_POS[gu]) return;
+    const pos = DAEJEON_GU_POS[gu];
+    const pin = document.createElement("div");
+    pin.className = "map-pin";
+    pin.style.left  = pos.left;
+    pin.style.top   = pos.top;
+    pin.title = spot.name;
+    pin.addEventListener("click", () => focusSpotCard(spot.name));
+    container.appendChild(pin);
+  });
+}
+
 function renderPending() {
   elements.pendingList.innerHTML = "";
   elements.pendingCount.textContent = String(state.pending.length);
@@ -559,6 +651,12 @@ function renderPending() {
 // ── 커스텀 SVG 스타일 지도 렌더링 ────────────────────────────────────────
 function renderAreaMap(container, activeAreaId, spots) {
   container.innerHTML = "";
+
+  // ── 대전: 주소에서 구를 동적 감지해 별도 렌더링 ──
+  if (state.activeRegion === "daejeon") {
+    renderDaejeonMap(container, spots);
+    return;
+  }
 
   // 현재 대분류에 따라 보여줄 지역 목록 결정
   const activeRegion = REGIONS.find(r => r.id === state.activeRegion);
@@ -948,7 +1046,8 @@ function getFilteredApproved() {
     const haystack = [spot.name, areaLabel(spot.area), spot.address, spot.description].join(" ").toLowerCase();
     const matchesQuery = !state.query || haystack.includes(state.query);
     const matchesOpen = !state.onlyOpen || isOpenNow(spot);
-    return matchesArea && matchesCategory && matchesQuery && matchesOpen;
+    const matchesGu   = !state.activeGuFilter || extractGu(spot.address) === state.activeGuFilter;
+    return matchesArea && matchesCategory && matchesQuery && matchesOpen && matchesGu;
   });
 }
 
@@ -1036,6 +1135,12 @@ function getAreaPin(areaId) {
 
 function areaLabel(areaId) {
   return AREAS.find((a) => a.id === areaId)?.label || areaId;
+}
+
+// ── 주소에서 구 추출 ──────────────────────────────────────────────────────
+function extractGu(address) {
+  const m = (address || "").match(/(\S+구)/);
+  return m ? m[1] : null;
 }
 
 // ── 영업중 판별 ───────────────────────────────────────────────────────────
