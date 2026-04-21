@@ -103,6 +103,7 @@ const state = {
   draftArea:      AREAS.find((a) => a.defaultFocus)?.id || AREAS[0].id,
   get draftPin()  { return getAreaPin(this.draftArea); },
   adminApprovedQuery: "",
+  onlyOpen: false,
 };
 
 // ── DOM 요소 참조 ─────────────────────────────────────────────────────────
@@ -143,6 +144,7 @@ const elements = {
   editPhone:          document.querySelector("#editPhone"),
   editModalCancel:    document.querySelector("#editModalCancel"),
   // 승인된 매장 관리 목록
+  openNowToggle:        document.querySelector("#openNowToggle"),
   approvedAdminList:    document.querySelector("#approvedAdminList"),
   approvedAdminSearch:  document.querySelector("#approvedAdminSearch"),
   // 매장명 중복 검사
@@ -312,6 +314,13 @@ function bindEvents() {
     state.draftArea = e.target.value;
   });
 
+  // ── 영업중 필터 토글 ──
+  elements.openNowToggle?.addEventListener("click", () => {
+    state.onlyOpen = !state.onlyOpen;
+    elements.openNowToggle.classList.toggle("active", state.onlyOpen);
+    renderApproved();
+  });
+
   // ── 매장명 실시간 중복 검사 ──
   elements.nameInput?.addEventListener("input", () => {
     checkDuplicateName(elements.nameInput.value.trim());
@@ -410,8 +419,13 @@ function renderCategoryFilters() {
 
 function renderRegionFilters() {
   elements.regionFilters.innerHTML = "";
+  // 영업중 필터가 켜져 있으면 영업 중인 매장만 카운트
+  const baseList = state.onlyOpen
+    ? state.approved.filter(isOpenNow)
+    : state.approved;
+
   REGIONS.forEach((region) => {
-    const count = state.approved.filter(s => region.areaIds.includes(s.area)).length;
+    const count = baseList.filter(s => region.areaIds.includes(s.area)).length;
     const isActive = region.id === state.activeRegion;
     const btn = document.createElement("button");
     btn.type = "button";
@@ -427,6 +441,9 @@ function renderRegionFilters() {
         state.activeRegion = region.id;
         state.activeArea   = null;
       }
+      // 지역 탭 전환 시 영업중 필터 초기화
+      state.onlyOpen = false;
+      if (elements.openNowToggle) elements.openNowToggle.classList.remove("active");
       renderRegionFilters();
       renderApproved();
     });
@@ -533,10 +550,11 @@ function renderAreaMap(container, activeAreaId, spots) {
     ? AREAS.filter(a => activeRegion.areaIds.includes(a.id))
     : AREAS;
 
-  // 지역별 승인 매장 수 (히트맵용)
+  // 지역별 승인 매장 수 (히트맵용) — 영업중 필터 반영
+  const mapBaseList = state.onlyOpen ? state.approved.filter(isOpenNow) : state.approved;
   const countMap = {};
   AREAS.forEach(a => { countMap[a.id] = 0; });
-  state.approved.forEach(s => { if (countMap[s.area] !== undefined) countMap[s.area]++; });
+  mapBaseList.forEach(s => { if (countMap[s.area] !== undefined) countMap[s.area]++; });
   const maxCount = Math.max(1, ...visibleAreas.map(a => countMap[a.id] || 0));
 
   // ── 위치 정규화: 평균값 기준 + 세로/가로 독립 스케일 ──
@@ -914,7 +932,8 @@ function getFilteredApproved() {
     const matchesCategory = state.activeCategory === "all" || spot.categories.includes(state.activeCategory);
     const haystack = [spot.name, areaLabel(spot.area), spot.address, spot.description].join(" ").toLowerCase();
     const matchesQuery = !state.query || haystack.includes(state.query);
-    return matchesArea && matchesCategory && matchesQuery;
+    const matchesOpen = !state.onlyOpen || isOpenNow(spot);
+    return matchesArea && matchesCategory && matchesQuery && matchesOpen;
   });
 }
 
@@ -1002,6 +1021,34 @@ function getAreaPin(areaId) {
 
 function areaLabel(areaId) {
   return AREAS.find((a) => a.id === areaId)?.label || areaId;
+}
+
+// ── 영업중 판별 ───────────────────────────────────────────────────────────
+function isOpenNow(spot) {
+  const DAY_CODES = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"];
+  const now = new Date();
+  const todayCode = DAY_CODES[now.getDay()];
+
+  // 오늘 휴무이면 영업 안 함
+  if (spot.closedDays?.includes(todayCode)) return false;
+
+  // 운영시간 정보 없으면 영업중으로 간주
+  const hours = (spot.hours || "").trim();
+  if (!hours || hours === "정보 제보 필요") return true;
+
+  // "HH:MM - HH:MM" 또는 "HH:MM~HH:MM" 형식 파싱
+  const match = hours.match(/(\d{1,2}):(\d{2})\s*[-~]\s*(\d{1,2}):(\d{2})/);
+  if (!match) return true;
+
+  const openMin  = parseInt(match[1]) * 60 + parseInt(match[2]);
+  const closeMin = parseInt(match[3]) * 60 + parseInt(match[4]);
+  const nowMin   = now.getHours() * 60 + now.getMinutes();
+
+  // 자정 넘는 케이스 (예: 10:00 - 02:00)
+  if (closeMin < openMin) {
+    return nowMin >= openMin || nowMin < closeMin;
+  }
+  return nowMin >= openMin && nowMin < closeMin;
 }
 
 function createId() {
