@@ -823,6 +823,18 @@ button.district-label:active {
   border-radius: 12px;
 }
 
+/* 관리 탭 — 로그아웃 버튼 */
+.admin-logout-btn {
+  margin-top: 10px;
+  font-size: .8rem;
+  padding: 6px 14px;
+  opacity: .75;
+}
+
+.admin-logout-btn:hover {
+  opacity: 1;
+}
+
 /* 관리 탭 — 대기함 / 승인 완료 구분선 */
 .admin-section-divider {
   height: 1px;
