@@ -497,7 +497,7 @@ function renderApproved() {
   elements.approvedList.innerHTML   = "";
   elements.approvedCount.textContent  = `${filtered.length}곳`;
   elements.approvedTotal.textContent  = String(state.approved.length);
-  elements.toggleViewButton.textContent = state.viewMode === "map" ? "리스트 보기" : "지도 보기";
+  elements.toggleViewButton.textContent = state.viewMode === "map" ? "지도 숨기기" : "지도 보기";
   const showMap = state.viewMode === "map";
   elements.mapStage.style.display = showMap ? "block" : "none";
   const statusLabel = state.activeArea
