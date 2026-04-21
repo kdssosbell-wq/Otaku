@@ -83,6 +83,7 @@ const state = {
   pending:        [],
   draftArea:      AREAS.find((a) => a.defaultFocus)?.id || AREAS[0].id,
   get draftPin()  { return getAreaPin(this.draftArea); },
+  adminApprovedQuery: "",
 };
 
 // ── DOM 요소 참조 ─────────────────────────────────────────────────────────
@@ -127,7 +128,8 @@ const elements = {
   editPhone:          document.querySelector("#editPhone"),
   editModalCancel:    document.querySelector("#editModalCancel"),
   // 승인된 매장 관리 목록
-  approvedAdminList:  document.querySelector("#approvedAdminList"),
+  approvedAdminList:    document.querySelector("#approvedAdminList"),
+  approvedAdminSearch:  document.querySelector("#approvedAdminSearch"),
 };
 
 bootstrap();
@@ -242,7 +244,7 @@ function bindEvents() {
     if (e.target === elements.editModalOverlay) closeEditModal();
   });
 
-  // ── 검색 ──
+  // ── 지도 탭 검색 ──
   elements.searchInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") { e.preventDefault(); executeSearch(); }
   });
@@ -250,6 +252,15 @@ function bindEvents() {
     if (!elements.searchInput.value) { state.query = ""; renderApproved(); }
   });
   elements.searchButton.addEventListener("click", executeSearch);
+
+  // ── 관리 탭 승인 매장 검색 ──
+  elements.approvedAdminSearch?.addEventListener("input", (e) => {
+    state.adminApprovedQuery = e.target.value.trim().toLowerCase();
+    renderApprovedAdmin();
+  });
+  elements.approvedAdminSearch?.addEventListener("search", (e) => {
+    if (!e.target.value) { state.adminApprovedQuery = ""; renderApprovedAdmin(); }
+  });
 
   // 지도 ↔ 리스트 토글
   elements.toggleViewButton.addEventListener("click", () => {
@@ -520,6 +531,12 @@ function createSpotCard(spot) {
   f.querySelector(".spot-card__hours").textContent = `운영 ${spot.hours}`;
   f.querySelector(".spot-card__author").innerHTML  = `<span class="author-badge">👤 ${spot.author}</span>`;
 
+  // 접기/펼치기 토글
+  f.querySelector(".spot-card__toggle").addEventListener("click", (e) => {
+    const card = e.currentTarget.closest(".spot-card");
+    card.classList.toggle("is-open");
+  });
+
   // 주소 복사 버튼
   f.querySelector(".addr-copy-btn").addEventListener("click", (e) => {
     navigator.clipboard.writeText(spot.address).then(() => {
@@ -656,8 +673,24 @@ function renderApprovedAdmin() {
     return;
   }
 
+  // 검색 필터
+  const q = state.adminApprovedQuery;
+  const filtered = q
+    ? state.approved.filter((e) =>
+        [e.name, areaLabel(e.area), e.address, e.description].join(" ").toLowerCase().includes(q)
+      )
+    : state.approved;
+
+  if (!filtered.length) {
+    const empty = document.createElement("article");
+    empty.className = "pending-card";
+    empty.innerHTML = `<h3>검색 결과가 없습니다</h3>`;
+    elements.approvedAdminList.appendChild(empty);
+    return;
+  }
+
   // 지역 순으로 정렬
-  const sorted = [...state.approved].sort((a, b) =>
+  const sorted = [...filtered].sort((a, b) =>
     (areaLabel(a.area) + a.name).localeCompare(areaLabel(b.area) + b.name, "ko")
   );
 
@@ -794,6 +827,7 @@ function focusSpotCard(name) {
     (node) => node.querySelector("h3")?.textContent === name
   );
   if (!card) return;
+  card.classList.add("is-open");
   card.scrollIntoView({ behavior: "smooth", block: "center" });
   card.animate(
     [{ transform: "scale(1)" }, { transform: "scale(1.02)" }, { transform: "scale(1)" }],
