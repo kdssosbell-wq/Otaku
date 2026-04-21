@@ -153,7 +153,24 @@ select {
   background: linear-gradient(135deg, var(--accent-strong), var(--accent));
 }
 
-.chip-row,
+.chip-row {
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  gap: 8px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  padding-bottom: 2px;
+}
+
+.chip-row::-webkit-scrollbar {
+  display: none;
+}
+
+.chip-row .chip {
+  flex: 0 0 auto;
+}
+
 .tag-row,
 .checkbox-grid {
   display: flex;
@@ -647,6 +664,26 @@ button.district-label:active {
 .pill--accent {
   background: rgba(45, 108, 223, 0.12);
   color: var(--blue);
+}
+
+.pill--toggle {
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: transparent;
+  color: var(--muted);
+  transition: background .18s, color .18s, border-color .18s;
+}
+
+.pill--toggle.active {
+  background: rgba(34, 160, 90, 0.13);
+  border-color: rgba(34, 160, 90, 0.35);
+  color: #1a8a50;
+}
+
+.list-header-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .bottom-nav {
