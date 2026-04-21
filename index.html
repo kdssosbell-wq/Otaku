@@ -129,6 +129,15 @@
           </label>
 
           <label>
+            주차
+            <div class="radio-group">
+              <label class="checkbox-item"><input type="radio" name="parking" value=""><span>정보 없음</span></label>
+              <label class="checkbox-item"><input type="radio" name="parking" value="available"><span>🚗 가능</span></label>
+              <label class="checkbox-item"><input type="radio" name="parking" value="unavailable"><span>🚌 권장</span></label>
+            </div>
+          </label>
+
+          <label>
             제보자 닉네임
             <input name="author" type="text" maxlength="20" placeholder="예: 원덕후42">
           </label>
@@ -230,6 +239,14 @@
         </label>
         <label>SNS<input id="editSns" type="text" maxlength="80"></label>
         <label>전화번호<input id="editPhone" type="tel" maxlength="20"></label>
+        <label>
+          주차
+          <div class="radio-group" id="editParking">
+            <label class="checkbox-item"><input type="radio" name="editParking" value=""><span>정보 없음</span></label>
+            <label class="checkbox-item"><input type="radio" name="editParking" value="available"><span>🚗 가능</span></label>
+            <label class="checkbox-item"><input type="radio" name="editParking" value="unavailable"><span>🚌 권장</span></label>
+          </div>
+        </label>
         <div class="admin-modal__actions">
           <button type="button" class="ghost-btn" id="editModalCancel">취소</button>
           <button type="submit" class="primary-btn">저장</button>
