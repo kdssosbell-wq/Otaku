@@ -559,7 +559,7 @@ function createSpotCard(spot) {
     a.target = "_blank";
     a.rel = "noopener noreferrer";
     a.className = "spot-card__extra-item sns-link";
-    a.innerHTML = `<img src="instargram.svg" class="sns-icon" alt="Instagram"><span class="sns-handle">@${handle}</span>`;
+    a.innerHTML = `<img src="instargram.png" class="sns-icon" alt="Instagram"><span class="sns-handle">@${handle}</span>`;
     extra.appendChild(a);
   }
 
