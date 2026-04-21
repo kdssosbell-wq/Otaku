@@ -156,8 +156,12 @@ const elements = {
   placeDropdown:        document.querySelector("#placeDropdown"),
 };
 
-// 카카오 SDK 로딩 완료 후 앱 시작
-kakao.maps.load(() => bootstrap());
+// 카카오 SDK 로딩 완료 후 앱 시작 (SDK 로드 실패 시에도 앱은 동작)
+if (window.kakao?.maps?.load) {
+  kakao.maps.load(() => bootstrap());
+} else {
+  bootstrap();
+}
 
 // ── 초기화 ────────────────────────────────────────────────────────────────
 function bootstrap() {
