@@ -666,3 +666,76 @@ button.district-label:active {
   color: rgba(88, 59, 39, 0.42);
   font-weight: 500;
 }
+
+/* 수정 모달 — 필드가 많아서 더 넓게 */
+.admin-modal--wide {
+  width: min(100%, 480px);
+}
+
+/* 수정 모달 폼 — 필드가 많으므로 스크롤 처리 */
+#editForm {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 62vh;
+  overflow-y: auto;
+  padding-right: 4px;
+  margin-top: 16px;
+}
+
+/* 수정 모달 내 입력 필드 */
+.admin-modal--wide input:not([type="checkbox"]),
+.admin-modal--wide textarea,
+.admin-modal--wide select {
+  width: 100%;
+  border: 1px solid rgba(88, 59, 39, 0.14);
+  background: rgba(255, 255, 255, 0.72);
+  border-radius: 16px;
+  padding: 12px 14px;
+  color: var(--text);
+  font: inherit;
+  margin-top: 4px;
+}
+
+.admin-modal--wide label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+/* 휴무일 7칸 체크박스 — 한 줄에 들어오는 소형 레이아웃 */
+.checkbox-grid--days {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.checkbox-grid--days .checkbox-item {
+  padding: 8px 10px;
+  font-size: 0.85rem;
+  gap: 5px;
+  border-radius: 12px;
+}
+
+/* 승인된 매장 카드 — 추가 정보(휴무일·전화·SNS) 영역 */
+.spot-card__extra {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.spot-card__extra-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(88, 59, 39, 0.12);
+  font-size: 0.8rem;
+  color: var(--muted);
+  font-weight: 500;
+}
