@@ -80,14 +80,24 @@ const AREAS = [
     shapes: [{ top: "86%", left: "60%", width: "22%", height: "12%" }],
     labelPos: { top: "89%", left: "64%" },
   },
+  {
+    id: "busan", label: "부산",
+    shapes: [{ top: "40%", left: "30%", width: "40%", height: "30%" }],
+    labelPos: { top: "50%", left: "36%" },
+  },
+  {
+    id: "daejeon", label: "대전",
+    shapes: [{ top: "40%", left: "30%", width: "40%", height: "30%" }],
+    labelPos: { top: "50%", left: "36%" },
+  },
 ];
 
 // ── 대분류 지역 정의 ──────────────────────────────────────────────────────
 const REGIONS = [
   { id: "seoul",    label: "서울",   areaIds: ["hongdae","hapjeong","sinchon","yongsan","gangnam","geondae"] },
   { id: "gyeonggi", label: "경기도", areaIds: ["suwon","osan","dongtan","pyeongtaek","cheonan"] },
-  { id: "busan",    label: "부산",   areaIds: [] },
-  { id: "daejeon",  label: "대전",   areaIds: [] },
+  { id: "busan",    label: "부산",   areaIds: ["busan"] },
+  { id: "daejeon",  label: "대전",   areaIds: ["daejeon"] },
 ];
 
 // ── 앱 상태 ───────────────────────────────────────────────────────────────
