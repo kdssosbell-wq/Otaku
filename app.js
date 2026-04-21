@@ -111,6 +111,7 @@ const elements = {
   editModalOverlay:   document.querySelector("#editModalOverlay"),
   editForm:           document.querySelector("#editForm"),
   editEntryId:        document.querySelector("#editEntryId"),
+  editCollection:     document.querySelector("#editCollection"),
   editName:           document.querySelector("#editName"),
   editArea:           document.querySelector("#editArea"),
   editAddress:        document.querySelector("#editAddress"),
@@ -120,6 +121,8 @@ const elements = {
   editSns:            document.querySelector("#editSns"),
   editPhone:          document.querySelector("#editPhone"),
   editModalCancel:    document.querySelector("#editModalCancel"),
+  // 승인된 매장 관리 목록
+  approvedAdminList:  document.querySelector("#approvedAdminList"),
 };
 
 bootstrap();
@@ -142,6 +145,7 @@ function setupFirestoreListeners() {
   db.collection("approved").onSnapshot((snapshot) => {
     state.approved = snapshot.docs.map((doc) => doc.data());
     renderApproved();
+    renderApprovedAdmin();
   }, (err) => console.error("approved 리스너 오류:", err));
 
   db.collection("pending")
@@ -218,8 +222,9 @@ function bindEvents() {
       pin:         getAreaPin(elements.editArea.value),
     };
 
+    const collection = elements.editCollection.value || "pending";
     try {
-      await db.collection("pending").doc(entryId).update(updatedData);
+      await db.collection(collection).doc(entryId).update(updatedData);
       closeEditModal();
     } catch (err) {
       console.error("수정 실패:", err);
@@ -305,6 +310,7 @@ function render() {
   renderPanels();
   renderApproved();
   renderPending();
+  renderApprovedAdmin();
 }
 
 function renderPanels() {
@@ -596,8 +602,83 @@ async function rejectEntry(entryId) {
   }
 }
 
+// ── 승인된 매장 관리 목록 렌더링 ─────────────────────────────────────────
+function renderApprovedAdmin() {
+  if (!elements.approvedAdminList) return;
+  elements.approvedAdminList.innerHTML = "";
+
+  if (!state.approved.length) {
+    const empty = document.createElement("article");
+    empty.className = "pending-card";
+    empty.innerHTML = `<h3>승인된 매장이 없습니다</h3>
+      <p class="pending-card__desc">제보를 승인하면 이곳에 표시됩니다.</p>`;
+    elements.approvedAdminList.appendChild(empty);
+    return;
+  }
+
+  // 지역 순으로 정렬
+  const sorted = [...state.approved].sort((a, b) =>
+    (areaLabel(a.area) + a.name).localeCompare(areaLabel(b.area) + b.name, "ko")
+  );
+
+  sorted.forEach((entry) => {
+    const card = document.createElement("article");
+    card.className = "pending-card";
+
+    const tags = (entry.categories || [])
+      .map((id) => {
+        const cat = CATEGORIES.find((c) => c.id === id);
+        return `<span class="tag">${cat ? cat.label : id}</span>`;
+      }).join("");
+
+    const extraParts = [];
+    if (entry.closedDays?.length)
+      extraParts.push(`휴무 ${entry.closedDays.map((d) => DAY_LABELS[d] || d).join("·")}`);
+    if (entry.phone) extraParts.push(entry.phone);
+    if (entry.sns)   extraParts.push(entry.sns);
+
+    card.innerHTML = `
+      <div class="pending-card__head">
+        <div>
+          <h3>${entry.name}</h3>
+          <p class="pending-card__meta">${areaLabel(entry.area)} · ${entry.address}</p>
+        </div>
+      </div>
+      <p class="pending-card__desc">${entry.description || ""}</p>
+      <p class="pending-card__coords">${extraParts.join("  ·  ")}</p>
+      <div class="tag-row">${tags}</div>
+      <div class="pending-card__actions">
+        <button class="ghost-btn ghost-btn--danger js-delete-approved" type="button">삭제</button>
+        <button class="primary-btn js-edit-approved" type="button">수정</button>
+      </div>
+    `;
+
+    card.querySelector(".js-edit-approved").addEventListener("click", () =>
+      openEditModal(entry, "approved")
+    );
+    card.querySelector(".js-delete-approved").addEventListener("click", () =>
+      deleteApproved(entry.id)
+    );
+
+    elements.approvedAdminList.appendChild(card);
+  });
+}
+
+async function deleteApproved(entryId) {
+  if (!window.confirm("승인된 매장을 삭제하면 지도에서도 사라집니다. 삭제할까요?")) return;
+  try {
+    await db.collection("approved").doc(entryId).delete();
+  } catch (err) {
+    console.error("삭제 실패:", err);
+    window.alert("삭제 중 오류가 발생했습니다.");
+  }
+}
+
 // ── 수정 모달 ─────────────────────────────────────────────────────────────
-function openEditModal(entry) {
+function openEditModal(entry, collection = "pending") {
+  // 어느 컬렉션 대상인지 저장
+  elements.editCollection.value  = collection;
+
   // 기존 데이터 채우기
   elements.editEntryId.value    = entry.id;
   elements.editName.value       = entry.name;
@@ -617,6 +698,10 @@ function openEditModal(entry) {
   document.querySelectorAll("#editClosedDays input").forEach((cb) => {
     cb.checked = (entry.closedDays || []).includes(cb.value);
   });
+
+  // 모달 제목 구분
+  const modalTitle = elements.editModalOverlay.querySelector("h2");
+  if (modalTitle) modalTitle.textContent = collection === "approved" ? "매장 정보 수정" : "제보 수정";
 
   elements.editModalOverlay.classList.add("open");
   requestAnimationFrame(() => elements.editName.focus());
