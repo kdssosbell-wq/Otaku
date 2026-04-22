@@ -68,27 +68,96 @@ html {
 html::before {
   content: "";
   position: fixed;
-  inset: -6px; /* blur 번짐 방지용 여백 */
+  inset: 0;
   z-index: -2;
-  background-size: cover;
-  background-position: center top;
-  transition: opacity 1.5s ease;
-  filter: blur(1.5px) brightness(0.96);
+  transition: background 2s ease;
 }
 
-/* ── 오전 7시 ~ 오후 6시: 천사날개 파스텔 (background2) ── */
+/* ────────────────────────────────────────────────────────
+   오전 7시 ~ 오후 6시 · DAY
+   background2 참고: 하늘색 → 라벤더 → 복숭아핑크
+   도트: 흰 점 20px 그리드
+──────────────────────────────────────────────────────── */
 html[data-time="day"]::before {
-  background-image: url('tema/background2.png');
+  background:
+    /* 도트 그리드 */
+    radial-gradient(circle, rgba(255,255,255,0.28) 1.5px, transparent 1.5px),
+    /* 소프트 빛 블럭 */
+    radial-gradient(ellipse 65% 45% at 50% 32%, rgba(255,248,255,0.60) 0%, transparent 60%),
+    radial-gradient(ellipse 45% 38% at 12% 68%, rgba(215,195,252,0.45) 0%, transparent 55%),
+    radial-gradient(ellipse 45% 38% at 88% 68%, rgba(190,225,255,0.40) 0%, transparent 55%),
+    radial-gradient(ellipse 35% 28% at 50% 90%, rgba(255,218,238,0.50) 0%, transparent 55%),
+    /* 베이스 그라디언트 */
+    linear-gradient(170deg,
+      #74c6ee 0%,
+      #98d0f4 10%,
+      #bbd8f8 22%,
+      #cdc8f4 35%,
+      #dcc6ef 48%,
+      #eacbd8 62%,
+      #f5d8e8 76%,
+      #fde8f3 90%,
+      #fff2f8 100%
+    );
+  background-size: 20px 20px, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%;
 }
 
-/* ── 오후 6시 ~ 자정: 핑크구름 별하늘 (background1) ── */
+/* ────────────────────────────────────────────────────────
+   오후 6시 ~ 자정 · EVENING
+   background1 참고: 딥블루 → 보라 → 핑크구름
+   도트: 연한 금/핑크 점 18px 그리드
+──────────────────────────────────────────────────────── */
 html[data-time="evening"]::before {
-  background-image: url('tema/background1.png');
+  background:
+    /* 도트 그리드 */
+    radial-gradient(circle, rgba(255,220,240,0.22) 1.5px, transparent 1.5px),
+    /* 구름 빛 블럭 */
+    radial-gradient(ellipse 55% 38% at 25% 20%, rgba(255,190,225,0.42) 0%, transparent 58%),
+    radial-gradient(ellipse 42% 30% at 75% 24%, rgba(190,160,255,0.38) 0%, transparent 52%),
+    radial-gradient(ellipse 62% 42% at 50% 62%, rgba(255,200,232,0.55) 0%, transparent 60%),
+    radial-gradient(ellipse 35% 24% at 10% 58%, rgba(255,178,215,0.35) 0%, transparent 50%),
+    radial-gradient(ellipse 35% 24% at 90% 62%, rgba(195,168,255,0.30) 0%, transparent 50%),
+    /* 베이스 그라디언트 */
+    linear-gradient(175deg,
+      #2450be 0%,
+      #4068d2 15%,
+      #6255c0 30%,
+      #9a60b0 44%,
+      #be78b2 56%,
+      #d898c2 68%,
+      #eab8d2 80%,
+      #f6d0e4 90%,
+      #fde4f0 100%
+    );
+  background-size: 18px 18px, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%;
 }
 
-/* ── 자정 ~ 오전 7시: 딥블루 은하수 (background3) ── */
+/* ────────────────────────────────────────────────────────
+   자정 ~ 오전 7시 · NIGHT
+   background3 참고: 딥네이비 → 인디고 → 아이스블루
+   도트: 흰/아이스블루 점 16px 그리드 (별 느낌)
+──────────────────────────────────────────────────────── */
 html[data-time="night"]::before {
-  background-image: url('tema/background3.png');
+  background:
+    /* 도트 그리드 (별처럼 촘촘하게) */
+    radial-gradient(circle, rgba(200,220,255,0.30) 1.2px, transparent 1.2px),
+    /* 성운/은하 빛 블럭 */
+    radial-gradient(ellipse 58% 32% at 20% 16%, rgba(162,142,255,0.40) 0%, transparent 58%),
+    radial-gradient(ellipse 42% 26% at 78% 26%, rgba(105,175,255,0.28) 0%, transparent 50%),
+    radial-gradient(ellipse 75% 38% at 50% 52%, rgba(135,192,255,0.18) 0%, transparent 55%),
+    radial-gradient(ellipse 48% 32% at 60% 82%, rgba(182,162,242,0.22) 0%, transparent 52%),
+    /* 베이스 그라디언트 */
+    linear-gradient(180deg,
+      #030a1e 0%,
+      #09132e 18%,
+      #121c48 34%,
+      #1c2860 50%,
+      #2a3878 65%,
+      #3e5090 78%,
+      #5a6aa8 88%,
+      #7888c0 100%
+    );
+  background-size: 16px 16px, 100% 100%, 100% 100%, 100% 100%, 100% 100%, 100% 100%;
 }
 
 /* 배경 위 반투명 오버레이 (가독성 확보) */
@@ -97,13 +166,12 @@ html::after {
   position: fixed;
   inset: 0;
   z-index: -1;
-  background: rgba(10, 4, 24, 0.15);
   pointer-events: none;
 }
 
-html[data-time="day"]::after {
-  background: rgba(20, 8, 40, 0.1);
-}
+html[data-time="day"]::after    { background: rgba(10, 4, 20, 0.08); }
+html[data-time="evening"]::after { background: rgba(8, 2, 18, 0.12); }
+html[data-time="night"]::after   { background: rgba(0, 0, 10, 0.20); }
 
 html[data-time="evening"]::after {
   background: rgba(20, 5, 40, 0.18);
