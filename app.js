@@ -1212,7 +1212,9 @@ setInterval(applyTimeBackground, 60 * 1000);
     }, { passive: true });
 
     document.addEventListener("touchend", () => {
+      // CSS transition(0.7s)으로 서서히 페이드아웃
       cursor.style.opacity = "0";
+      cursor.style.scale   = "1";
     }, { passive: true });
 
   } else {
