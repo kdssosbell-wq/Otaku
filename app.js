@@ -14,6 +14,10 @@ const auth = firebase.auth();
 // ── 관리자 인증 상태 ────────────────────────────────────────────────────────
 let isAdminUnlocked = false;
 
+// ── 네이버 지도 인스턴스 ─────────────────────────────────────────────────
+let naverMap    = null;
+const nmMarkers = []; // { marker, infoWindow }
+
 // ── 카테고리 & 지역 & 요일 정의 ───────────────────────────────────────────
 const CATEGORIES = [
   { id: "kuji",   label: "제일복권" },
@@ -91,6 +95,30 @@ const AREAS = [
     labelPos: { top: "50%", left: "36%" },
   },
 ];
+
+// ── 네이버 지도: 지역별 중심 좌표 ────────────────────────────────────────
+const AREA_CENTERS = {
+  hongdae:    { lat: 37.5534, lng: 126.9235 },
+  hapjeong:   { lat: 37.5498, lng: 126.9049 },
+  sinchon:    { lat: 37.5596, lng: 126.9370 },
+  yongsan:    { lat: 37.5323, lng: 126.9647 },
+  gangnam:    { lat: 37.4982, lng: 127.0275 },
+  geondae:    { lat: 37.5403, lng: 127.0703 },
+  suwon:      { lat: 37.2636, lng: 127.0286 },
+  osan:       { lat: 37.1496, lng: 127.0694 },
+  dongtan:    { lat: 37.2005, lng: 127.2222 },
+  pyeongtaek: { lat: 36.9921, lng: 127.1128 },
+  cheonan:    { lat: 36.8151, lng: 127.1139 },
+  busan:      { lat: 35.1796, lng: 129.0756 },
+  daejeon:    { lat: 36.3504, lng: 127.3845 },
+};
+
+const REGION_VIEWS = {
+  seoul:    { lat: 37.5400, lng: 126.9700, zoom: 12 },
+  gyeonggi: { lat: 37.1800, lng: 127.0600, zoom: 10 },
+  busan:    { lat: 35.1796, lng: 129.0756, zoom: 13 },
+  daejeon:  { lat: 36.3504, lng: 127.3845, zoom: 13 },
+};
 
 // ── 대전 구별 지도 위치 ───────────────────────────────────────────────────
 const DAEJEON_GU_POS = {
@@ -186,6 +214,8 @@ function bootstrap() {
   setupAuthListener();
   render();
   setupFirestoreListeners();
+  initNaverMap();
+  initPlaceSearch();
 }
 
 // ── Firebase Auth 리스너 ──────────────────────────────────────────────────
@@ -327,6 +357,10 @@ function bindEvents() {
   elements.toggleViewButton.addEventListener("click", () => {
     state.viewMode = state.viewMode === "map" ? "list" : "map";
     renderApproved();
+    // 지도가 숨겨졌다가 다시 표시될 때 네이버 지도 크기 재계산
+    if (state.viewMode === "map" && naverMap) {
+      setTimeout(() => naverMap.autoResize(), 80);
+    }
   });
 
   // 제보 폼 지역 변경
@@ -363,11 +397,14 @@ function bindEvents() {
     }
 
     const selectedArea = formData.get("area");
+    const latVal = parseFloat(formData.get("lat") || "");
+    const lngVal = parseFloat(formData.get("lng") || "");
     const entry = {
       id:          createId(),
       name:        formData.get("name"),
       area:        selectedArea,
       address:     formData.get("address"),
+      ...(isFinite(latVal) && isFinite(lngVal) ? { lat: latVal, lng: lngVal } : {}),
       categories,
       description: formData.get("description"),
       hours:       formData.get("hours") || "정보 제보 필요",
@@ -649,7 +686,144 @@ function renderPending() {
 }
 
 // ── 커스텀 SVG 스타일 지도 렌더링 ────────────────────────────────────────
+// ── 네이버 지도 초기화 ────────────────────────────────────────────────────
+function initNaverMap() {
+  if (!window.naver?.maps) return;
+  const container = elements.mapStage;
+  if (!container) return;
+
+  const view = REGION_VIEWS[state.activeRegion] || REGION_VIEWS.seoul;
+  naverMap = new naver.maps.Map(container, {
+    center:  new naver.maps.LatLng(view.lat, view.lng),
+    zoom:    view.zoom,
+    minZoom: 9,
+    mapDataControl: false,
+    logoControlOptions: { position: naver.maps.Position.BOTTOM_LEFT },
+    scaleControlOptions: { position: naver.maps.Position.BOTTOM_RIGHT },
+  });
+
+  // 지도 클릭 시 열린 정보창 닫기
+  naver.maps.Event.addListener(naverMap, "click", () => {
+    nmMarkers.forEach(({ infoWindow }) => infoWindow.close());
+  });
+
+  window.addEventListener("resize", () => { naverMap?.autoResize(); });
+}
+
+// ── 좌표 결정: 저장된 값 우선, 없으면 지역 중심 + 결정론적 오프셋 ─────────
+function hashToFloat(str) {
+  let h = 2166136261 >>> 0;
+  for (let i = 0; i < str.length; i++) {
+    h = Math.imul(h ^ str.charCodeAt(i), 16777619) >>> 0;
+  }
+  return h / 0xffffffff;
+}
+
+function getSpotCoords(spot) {
+  if (spot.lat && spot.lng) return { lat: +spot.lat, lng: +spot.lng };
+  const center = AREA_CENTERS[spot.area];
+  if (!center) return null;
+  const seed = spot.id || spot.name || "";
+  return {
+    lat: center.lat + (hashToFloat(seed + "lat") - 0.5) * 0.007,
+    lng: center.lng + (hashToFloat(seed + "lng") - 0.5) * 0.010,
+  };
+}
+
+// ── 마커 생성 HTML ─────────────────────────────────────────────────────────
+function makePinHTML(isOpen) {
+  return `<div class="nm-pin${isOpen ? " is-open" : ""}"></div>`;
+}
+
+function makeInfoWindowHTML(spot) {
+  const cats = (spot.categories || [])
+    .map(c => CATEGORIES.find(x => x.id === c)?.label || c)
+    .map(l => `<span class="nm-iw__tag">${l}</span>`)
+    .join("");
+  const open     = isOpenNow(spot);
+  const openBadge = spot.hours && spot.hours !== "정보 제보 필요"
+    ? `<span class="nm-iw__badge nm-iw__badge--${open ? "open" : "close"}">${open ? "영업중" : "영업종료"}</span>`
+    : "";
+  return `
+    <div class="nm-iw">
+      <strong class="nm-iw__name">${spot.name}</strong>
+      <p class="nm-iw__addr">${spot.address || ""}</p>
+      ${cats ? `<div class="nm-iw__tags">${cats}</div>` : ""}
+      <div class="nm-iw__foot">
+        ${spot.hours && spot.hours !== "정보 제보 필요" ? `<span>⏰ ${spot.hours}</span>` : ""}
+        ${openBadge}
+      </div>
+    </div>`;
+}
+
+// ── 마커 일괄 업데이트 ────────────────────────────────────────────────────
+function updateNaverMarkers(spots) {
+  if (!naverMap) return;
+
+  // 기존 마커 제거
+  nmMarkers.forEach(({ marker, infoWindow }) => {
+    infoWindow.close();
+    marker.setMap(null);
+  });
+  nmMarkers.length = 0;
+
+  spots.forEach(spot => {
+    const coords = getSpotCoords(spot);
+    if (!coords) return;
+
+    const open   = isOpenNow(spot);
+    const marker = new naver.maps.Marker({
+      position: new naver.maps.LatLng(coords.lat, coords.lng),
+      map:      naverMap,
+      icon: {
+        content: makePinHTML(open),
+        anchor:  new naver.maps.Point(8, 22),
+      },
+      title: spot.name,
+    });
+
+    const infoWindow = new naver.maps.InfoWindow({
+      content:         makeInfoWindowHTML(spot),
+      borderWidth:     0,
+      backgroundColor: "transparent",
+      anchorSkew:      true,
+      anchorColor:     "transparent",
+      anchorSize:      new naver.maps.Size(10, 10),
+    });
+
+    naver.maps.Event.addListener(marker, "click", () => {
+      // 다른 창 모두 닫기
+      nmMarkers.forEach(m => { if (m.infoWindow !== infoWindow) m.infoWindow.close(); });
+      if (infoWindow.getMap()) {
+        infoWindow.close();
+      } else {
+        infoWindow.open(naverMap, marker);
+        // 카드도 스크롤
+        focusSpotCard(spot.name);
+      }
+    });
+
+    nmMarkers.push({ marker, infoWindow });
+  });
+}
+
+// ── 지역 탭 변경 시 지도 이동 ────────────────────────────────────────────
+function panNaverMapToRegion() {
+  if (!naverMap) return;
+  const view = REGION_VIEWS[state.activeRegion];
+  if (!view) return;
+  naverMap.morph(new naver.maps.LatLng(view.lat, view.lng), view.zoom, { duration: 400 });
+}
+
 function renderAreaMap(container, activeAreaId, spots) {
+  // 네이버 지도 있으면 마커만 업데이트 (innerHTML 초기화 금지)
+  if (naverMap) {
+    panNaverMapToRegion();
+    updateNaverMarkers(spots);
+    return;
+  }
+
+  // 네이버 지도 미로드 시 → 기존 커스텀 지도 폴백
   container.innerHTML = "";
 
   // ── 대전: 주소에서 구를 동적 감지해 별도 렌더링 ──
@@ -1377,3 +1551,112 @@ setInterval(applyTimeBackground, 60 * 1000);
 
   animate();
 })();
+
+// ── 제보 탭: 장소 검색 + 주소 자동입력 ──────────────────────────────────
+function initPlaceSearch() {
+  const searchInput = document.getElementById("placeSearchInput");
+  const searchBtn   = document.getElementById("placeSearchBtn");
+  const resultsBox  = document.getElementById("placeSearchResults");
+  const previewEl   = document.getElementById("submitMapPreview");
+  const addrInput   = document.getElementById("addressInput");
+  const latInput    = document.getElementById("coordLat");
+  const lngInput    = document.getElementById("coordLng");
+  const nameInput   = document.getElementById("nameInput");
+
+  if (!searchInput || !window.naver?.maps?.Service) return;
+
+  let miniMap    = null;
+  let miniMarker = null;
+  let debounce   = null;
+
+  // 검색 실행
+  function doSearch() {
+    const q = searchInput.value.trim();
+    if (!q) { resultsBox.hidden = true; return; }
+
+    naver.maps.Service.geocode({ query: q }, (status, res) => {
+      if (status !== naver.maps.Service.Status.OK) {
+        resultsBox.innerHTML = `<div class="place-result-item" style="color:var(--muted)">결과를 찾을 수 없습니다.</div>`;
+        resultsBox.hidden = false;
+        return;
+      }
+      const addresses = res.v2?.addresses || [];
+      if (!addresses.length) {
+        resultsBox.innerHTML = `<div class="place-result-item" style="color:var(--muted)">결과를 찾을 수 없습니다.</div>`;
+        resultsBox.hidden = false;
+        return;
+      }
+
+      resultsBox.innerHTML = "";
+      addresses.slice(0, 6).forEach(item => {
+        const road   = item.roadAddress || "";
+        const jibun  = item.jibunAddress || "";
+        const display = road || jibun;
+
+        const btn = document.createElement("button");
+        btn.type      = "button";
+        btn.className = "place-result-item";
+        btn.innerHTML = `${display}${jibun && road ? `<span class="place-result-item__sub">${jibun}</span>` : ""}`;
+
+        btn.addEventListener("click", () => {
+          const lat = parseFloat(item.y);
+          const lng = parseFloat(item.x);
+
+          // 폼 자동 입력
+          if (addrInput) addrInput.value = road || jibun;
+          if (latInput)  latInput.value  = lat;
+          if (lngInput)  lngInput.value  = lng;
+
+          // 검색창 업데이트 & 드롭다운 닫기
+          searchInput.value = road || jibun;
+          resultsBox.hidden = true;
+
+          // 미니 지도 미리보기
+          showMiniMap(lat, lng);
+        });
+        resultsBox.appendChild(btn);
+      });
+      resultsBox.hidden = false;
+    });
+  }
+
+  // 입력 디바운스 (400ms)
+  searchInput.addEventListener("input", () => {
+    clearTimeout(debounce);
+    debounce = setTimeout(doSearch, 400);
+  });
+  searchBtn.addEventListener("click", doSearch);
+  searchInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); doSearch(); }
+  });
+
+  // 외부 클릭 시 드롭다운 닫기
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".place-search-card")) resultsBox.hidden = true;
+  });
+
+  // 미니 지도 미리보기 표시
+  function showMiniMap(lat, lng) {
+    previewEl.hidden = false;
+    const latlng = new naver.maps.LatLng(lat, lng);
+
+    if (!miniMap) {
+      miniMap = new naver.maps.Map(previewEl, {
+        center:         latlng,
+        zoom:           16,
+        mapDataControl: false,
+        scaleControl:   false,
+        logoControlOptions: { position: naver.maps.Position.BOTTOM_LEFT },
+      });
+      miniMarker = new naver.maps.Marker({
+        position: latlng,
+        map:      miniMap,
+        icon: { content: `<div class="nm-pin"></div>`, anchor: new naver.maps.Point(8, 22) },
+      });
+    } else {
+      miniMap.setCenter(latlng);
+      miniMarker.setPosition(latlng);
+    }
+  }
+}
+
