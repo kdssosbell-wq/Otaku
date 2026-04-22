@@ -1576,6 +1576,31 @@ function initPlaceSearch() {
     return str ? str.replace(/<[^>]*>/g, "") : "";
   }
 
+  // 도로명 주소에서 지역 ID 자동 감지
+  const ADDR_TO_AREA = [
+    { keys: ["마포구 서교동", "마포구 동교동", "마포구 연남동", "홍익대", "홍대입구"], area: "hongdae" },
+    { keys: ["마포구 합정동", "마포구 망원동", "합정동"],                              area: "hapjeong" },
+    { keys: ["서대문구 창천동", "서대문구 대현동", "신촌동"],                          area: "sinchon" },
+    { keys: ["용산구"],                                                                area: "yongsan" },
+    { keys: ["강남구", "서초구"],                                                      area: "gangnam" },
+    { keys: ["광진구 화양동", "광진구 자양동", "건대"],                                area: "geondae" },
+    { keys: ["수원시"],                                                                area: "suwon" },
+    { keys: ["오산시"],                                                                area: "osan" },
+    { keys: ["화성시 동탄", "동탄"],                                                   area: "dongtan" },
+    { keys: ["평택시"],                                                                area: "pyeongtaek" },
+    { keys: ["천안시"],                                                                area: "cheonan" },
+    { keys: ["부산"],                                                                  area: "busan" },
+    { keys: ["대전"],                                                                  area: "daejeon" },
+  ];
+
+  function detectAreaFromAddress(addr) {
+    if (!addr) return null;
+    for (const { keys, area } of ADDR_TO_AREA) {
+      if (keys.some(k => addr.includes(k))) return area;
+    }
+    return null;
+  }
+
   // 검색 실행 — Netlify Function 프록시를 통해 네이버 지역 검색 API 호출
   async function doSearch() {
     const q = searchInput.value.trim();
@@ -1617,6 +1642,13 @@ function initPlaceSearch() {
           // 제보 폼 자동 입력
           if (nameInput && !nameInput.value) nameInput.value = name;
           if (addrInput) addrInput.value = road;
+
+          // 주소에서 지역 자동 감지 → 지역 select 자동 선택
+          const detectedArea = detectAreaFromAddress(road);
+          if (detectedArea) {
+            const areaSelect = document.getElementById("submissionArea");
+            if (areaSelect) areaSelect.value = detectedArea;
+          }
 
           // 좌표가 한국 범위이면 바로 저장
           const validKorea = lat > 33 && lat < 40 && lng > 124 && lng < 132;
