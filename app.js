@@ -1174,3 +1174,191 @@ function isOpenNow(spot) {
 function createId() {
   return window.crypto?.randomUUID?.() || `spot-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
+
+// ── 시간대별 배경 ─────────────────────────────────────────────────────────
+function applyTimeBackground() {
+  const h = new Date().getHours();
+  let period;
+  if      (h >= 7  && h < 18) period = "day";     // 오전 7시 ~ 오후 6시  → background2
+  else if (h >= 18)            period = "evening"; // 오후 6시 ~ 자정      → background1
+  else                         period = "night";   // 자정 ~ 오전 7시      → background3
+  document.documentElement.dataset.time = period;
+}
+applyTimeBackground();
+setInterval(applyTimeBackground, 60 * 1000);
+
+// ── 커스텀 마우스 커서 ────────────────────────────────────────────────────
+(function initCursor() {
+  const cursor = document.getElementById("custom-cursor");
+  if (!cursor) return;
+
+  let isDown = false;
+
+  // 마우스 이동
+  document.addEventListener("mousemove", (e) => {
+    cursor.style.left = e.clientX + "px";
+    cursor.style.top  = e.clientY + "px";
+    cursor.style.opacity = "1";
+  });
+
+  // 마우스가 화면 밖으로 나갔을 때 숨기기
+  document.addEventListener("mouseleave", () => { cursor.style.opacity = "0"; });
+  document.addEventListener("mouseenter", () => { cursor.style.opacity = "1"; });
+
+  // 클릭할 때 살짝 튀는 효과 (scale만 조절, base transform은 CSS에서 유지)
+  document.addEventListener("mousedown", () => {
+    isDown = true;
+    cursor.style.scale = "0.8";
+  });
+  document.addEventListener("mouseup", () => {
+    isDown = false;
+    cursor.style.scale = "1";
+  });
+})();
+
+// ── 벚꽃 흩날리기 ────────────────────────────────────────────────────────
+(function initSakura() {
+  const container = document.getElementById("sakura-container");
+  if (!container) return;
+
+  const PETAL_COUNT = 20;  // 동시에 떠 있을 꽃잎 수
+
+  function createPetal() {
+    const el = document.createElement("div");
+    el.className = "sakura-petal";
+
+    // 랜덤 위치 / 크기 / 애니메이션 타이밍
+    const size     = 7 + Math.random() * 7;            // 7~14px
+    const startX   = Math.random() * 105;              // 0~105vw
+    const duration = 7 + Math.random() * 9;            // 7~16s
+    const delay    = -(Math.random() * 14);            // 음수 딜레이 → 시작부터 화면에 있음
+
+    el.style.cssText = `
+      left: ${startX}vw;
+      width: ${size}px;
+      height: ${size}px;
+      animation-duration: ${duration}s;
+      animation-delay: ${delay}s;
+    `;
+
+    container.appendChild(el);
+  }
+
+  for (let i = 0; i < PETAL_COUNT; i++) {
+    createPetal();
+  }
+})();
+
+// ── 배경 도트 반짝이 캔버스 ───────────────────────────────────────────────
+(function initSparkleCanvas() {
+  const canvas = document.createElement("canvas");
+  canvas.id = "sparkle-canvas";
+  canvas.style.cssText = [
+    "position:fixed",
+    "inset:0",
+    "width:100%",
+    "height:100%",
+    "pointer-events:none",
+    "z-index:-1",
+  ].join(";");
+  document.body.appendChild(canvas);
+
+  const ctx = canvas.getContext("2d");
+
+  function resize() {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener("resize", resize);
+
+  // 시간대별 스파클 색상 팔레트
+  const PALETTES = {
+    day:     ["#ffe8b0", "#ffd0e8", "#e8d0ff", "#ffffff", "#d8f8ff"], // background2: 파스텔 골드+핑크
+    evening: ["#ffb0d0", "#d8b0ff", "#ffeeaa", "#ffffff", "#ffcce8"], // background1: 핑크+보라+금
+    night:   ["#a8c8ff", "#c8b0ff", "#d8f0ff", "#ffffff", "#b0e8ff"], // background3: 아이스블루+보라
+  };
+
+  // 스파클 파티클 생성
+  const COUNT = 45;
+  const sparkles = Array.from({ length: COUNT }, () => ({
+    x:       Math.random(),               // 화면 비율 위치 (0~1)
+    y:       Math.random(),
+    size:    1.2 + Math.random() * 2.2,   // 도트 크기
+    phase:   Math.random() * Math.PI * 2, // 깜빡임 위상
+    speed:   0.018 + Math.random() * 0.032, // 깜빡임 속도
+    dx:      (Math.random() - 0.5) * 0.00025, // 수평 이동
+    dy:      (Math.random() - 0.5) * 0.00018, // 수직 이동
+    colorIdx: Math.floor(Math.random() * 5),
+    // 십자 스파클 vs 원형 도트 랜덤 혼합
+    type:    Math.random() < 0.6 ? "cross" : "dot",
+  }));
+
+  function getColors() {
+    const t = document.documentElement.dataset.time || "afternoon";
+    return PALETTES[t] || PALETTES.afternoon;
+  }
+
+  // 십자(+) 모양 스파클 그리기
+  function drawCross(x, y, size, alpha, color) {
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.strokeStyle = color;
+    ctx.lineCap = "round";
+
+    const arm = size * 3.5;
+    const armShort = arm * 0.45;
+
+    // 세로/가로 긴 축
+    ctx.lineWidth = size * 0.7;
+    ctx.beginPath(); ctx.moveTo(x, y - arm); ctx.lineTo(x, y + arm); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x - arm, y); ctx.lineTo(x + arm, y); ctx.stroke();
+
+    // 대각선 짧은 축
+    ctx.lineWidth = size * 0.35;
+    ctx.beginPath(); ctx.moveTo(x - armShort, y - armShort); ctx.lineTo(x + armShort, y + armShort); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x + armShort, y - armShort); ctx.lineTo(x - armShort, y + armShort); ctx.stroke();
+
+    ctx.restore();
+  }
+
+  // 원형 도트 그리기
+  function drawDot(x, y, size, alpha, color) {
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(x, y, size * 1.4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  let frame = 0;
+  function animate() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const colors = getColors();
+
+    sparkles.forEach((sp) => {
+      // 위치 살짝 이동 (루프)
+      sp.x = (sp.x + sp.dx + 1) % 1;
+      sp.y = (sp.y + sp.dy + 1) % 1;
+
+      // 알파값: sin 파형으로 자연스럽게 깜빡임
+      const alpha = Math.pow((Math.sin(frame * sp.speed + sp.phase) + 1) / 2, 1.8) * 0.82;
+      const color = colors[sp.colorIdx % colors.length];
+      const px    = sp.x * canvas.width;
+      const py    = sp.y * canvas.height;
+
+      if (sp.type === "cross") {
+        drawCross(px, py, sp.size, alpha, color);
+      } else {
+        drawDot(px, py, sp.size, alpha * 0.7, color);
+      }
+    });
+
+    frame++;
+    requestAnimationFrame(animate);
+  }
+
+  animate();
+})();
