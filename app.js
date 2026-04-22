@@ -1565,61 +1565,91 @@ function initPlaceSearch() {
   const lngInput    = document.getElementById("coordLng");
   const nameInput   = document.getElementById("nameInput");
 
-  if (!searchInput || !window.naver?.maps?.Service) return;
+  if (!searchInput) return;
 
   let miniMap    = null;
   let miniMarker = null;
   let debounce   = null;
 
-  // 검색 실행
-  function doSearch() {
+  // HTML 태그 제거 (네이버 API title에 <b> 태그가 포함됨)
+  function stripHtml(str) {
+    return str ? str.replace(/<[^>]*>/g, "") : "";
+  }
+
+  // 검색 실행 — Netlify Function 프록시를 통해 네이버 지역 검색 API 호출
+  async function doSearch() {
     const q = searchInput.value.trim();
     if (!q) { resultsBox.hidden = true; return; }
 
-    naver.maps.Service.geocode({ query: q }, (status, res) => {
-      if (status !== naver.maps.Service.Status.OK) {
+    resultsBox.innerHTML = `<div class="place-result-item" style="color:var(--muted)">검색 중…</div>`;
+    resultsBox.hidden = false;
+
+    try {
+      const res = await fetch(
+        `https://papaya-salamander-97d69e.netlify.app/.netlify/functions/naver-search?query=${encodeURIComponent(q)}`
+      );
+
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const items = data.items || [];
+
+      if (!items.length) {
         resultsBox.innerHTML = `<div class="place-result-item" style="color:var(--muted)">결과를 찾을 수 없습니다.</div>`;
-        resultsBox.hidden = false;
-        return;
-      }
-      const addresses = res.v2?.addresses || [];
-      if (!addresses.length) {
-        resultsBox.innerHTML = `<div class="place-result-item" style="color:var(--muted)">결과를 찾을 수 없습니다.</div>`;
-        resultsBox.hidden = false;
         return;
       }
 
       resultsBox.innerHTML = "";
-      addresses.slice(0, 6).forEach(item => {
-        const road   = item.roadAddress || "";
-        const jibun  = item.jibunAddress || "";
-        const display = road || jibun;
+      items.forEach((item) => {
+        const name = stripHtml(item.title);
+        const road = item.roadAddress || item.address || "";
+        const cat  = item.category ? `<span class="place-result-item__sub">${item.category} · ${road}</span>` : `<span class="place-result-item__sub">${road}</span>`;
 
         const btn = document.createElement("button");
         btn.type      = "button";
         btn.className = "place-result-item";
-        btn.innerHTML = `${display}${jibun && road ? `<span class="place-result-item__sub">${jibun}</span>` : ""}`;
+        btn.innerHTML = `<strong>${name}</strong>${cat}`;
 
         btn.addEventListener("click", () => {
-          const lat = parseFloat(item.y);
-          const lng = parseFloat(item.x);
+          // mapx / mapy 는 WGS84 × 1e7 정수값
+          const lng = parseFloat(item.mapx) / 1e7;
+          const lat = parseFloat(item.mapy) / 1e7;
 
-          // 폼 자동 입력
-          if (addrInput) addrInput.value = road || jibun;
-          if (latInput)  latInput.value  = lat;
-          if (lngInput)  lngInput.value  = lng;
+          // 제보 폼 자동 입력
+          if (nameInput && !nameInput.value) nameInput.value = name;
+          if (addrInput) addrInput.value = road;
 
-          // 검색창 업데이트 & 드롭다운 닫기
-          searchInput.value = road || jibun;
+          // 좌표가 한국 범위이면 바로 저장
+          const validKorea = lat > 33 && lat < 40 && lng > 124 && lng < 132;
+          if (validKorea) {
+            if (latInput) latInput.value = lat;
+            if (lngInput) lngInput.value = lng;
+            showMiniMap(lat, lng);
+          } else if (window.naver?.maps?.Service) {
+            // 좌표 변환 실패 시 Geocoder로 폴백 (도로명 주소 → WGS84)
+            naver.maps.Service.geocode({ query: road }, (status, gRes) => {
+              if (status === naver.maps.Service.Status.OK) {
+                const addr = gRes.v2?.addresses?.[0];
+                if (addr) {
+                  const glat = parseFloat(addr.y);
+                  const glng = parseFloat(addr.x);
+                  if (latInput) latInput.value = glat;
+                  if (lngInput) lngInput.value = glng;
+                  showMiniMap(glat, glng);
+                }
+              }
+            });
+          }
+
+          searchInput.value = name;
           resultsBox.hidden = true;
-
-          // 미니 지도 미리보기
-          showMiniMap(lat, lng);
         });
+
         resultsBox.appendChild(btn);
       });
-      resultsBox.hidden = false;
-    });
+    } catch (err) {
+      console.error("장소 검색 오류:", err);
+      resultsBox.innerHTML = `<div class="place-result-item" style="color:var(--muted)">검색 중 오류가 발생했습니다.</div>`;
+    }
   }
 
   // 입력 디바운스 (400ms)
@@ -1637,8 +1667,9 @@ function initPlaceSearch() {
     if (!e.target.closest(".place-search-card")) resultsBox.hidden = true;
   });
 
-  // 미니 지도 미리보기 표시
+  // 미니 지도 미리보기 표시 (Naver Maps 로드된 경우에만)
   function showMiniMap(lat, lng) {
+    if (!window.naver?.maps) return;
     previewEl.hidden = false;
     const latlng = new naver.maps.LatLng(lat, lng);
 
