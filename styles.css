@@ -44,7 +44,7 @@ body { cursor: none; }
   z-index: 99999;
   transform: translate(-6px, -4px);
   image-rendering: pixelated;
-  transition: scale 0.08s ease;
+  transition: scale 0.08s ease, opacity 0.7s ease;
   opacity: 0;
 }
 
@@ -284,6 +284,9 @@ body {
 
 .hero h1 {
   font-size: 2.1rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   background: linear-gradient(135deg, #ff5fa8, var(--lavender), #1fc8c8);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -291,6 +294,24 @@ body {
   filter:
     drop-shadow(0 1px 3px rgba(0, 0, 0, 0.25))
     drop-shadow(0 0 14px rgba(255, 120, 180, 0.45));
+}
+
+/* 타이틀 옆 마우스 캐릭터 */
+.hero-mouse {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  image-rendering: pixelated;
+  -webkit-text-fill-color: initial; /* 그라디언트 클립 해제 */
+  filter: none;
+  flex-shrink: 0;
+  animation: hero-mouse-float 2.8s ease-in-out infinite;
+}
+
+@keyframes hero-mouse-float {
+  0%, 100% { transform: translateY(0px);   }
+  45%       { transform: translateY(-6px);  }
+  55%       { transform: translateY(-6px);  }
 }
 
 .hero p,
