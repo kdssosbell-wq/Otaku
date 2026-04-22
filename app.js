@@ -1192,26 +1192,41 @@ setInterval(applyTimeBackground, 60 * 1000);
   const cursor = document.getElementById("custom-cursor");
   if (!cursor) return;
 
-  // 터치 기기에서는 커서 완전히 숨기고 종료
-  if ("ontouchstart" in window || navigator.maxTouchPoints > 0) {
-    cursor.style.display = "none";
-    return;
+  const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
+
+  if (isTouch) {
+    // ── 모바일: 터치 중에만 커서 표시, 떼면 숨김 ──
+    document.addEventListener("touchstart", (e) => {
+      const t = e.touches[0];
+      cursor.style.left    = t.clientX + "px";
+      cursor.style.top     = t.clientY + "px";
+      cursor.style.opacity = "1";
+      cursor.style.scale   = "0.85";
+    }, { passive: true });
+
+    document.addEventListener("touchmove", (e) => {
+      const t = e.touches[0];
+      cursor.style.left  = t.clientX + "px";
+      cursor.style.top   = t.clientY + "px";
+      cursor.style.scale = "1";
+    }, { passive: true });
+
+    document.addEventListener("touchend", () => {
+      cursor.style.opacity = "0";
+    }, { passive: true });
+
+  } else {
+    // ── PC: 마우스 이동에 따라 커서 표시 ──
+    document.addEventListener("mousemove", (e) => {
+      cursor.style.left    = e.clientX + "px";
+      cursor.style.top     = e.clientY + "px";
+      cursor.style.opacity = "1";
+    });
+    document.addEventListener("mouseleave", () => { cursor.style.opacity = "0"; });
+    document.addEventListener("mouseenter", () => { cursor.style.opacity = "1"; });
+    document.addEventListener("mousedown",  () => { cursor.style.scale = "0.8"; });
+    document.addEventListener("mouseup",    () => { cursor.style.scale = "1"; });
   }
-
-  // 마우스 이동
-  document.addEventListener("mousemove", (e) => {
-    cursor.style.left    = e.clientX + "px";
-    cursor.style.top     = e.clientY + "px";
-    cursor.style.opacity = "1";
-  });
-
-  // 마우스가 화면 밖으로 나갔을 때 숨기기
-  document.addEventListener("mouseleave", () => { cursor.style.opacity = "0"; });
-  document.addEventListener("mouseenter", () => { cursor.style.opacity = "1"; });
-
-  // 클릭할 때 살짝 튀는 효과
-  document.addEventListener("mousedown", () => { cursor.style.scale = "0.8"; });
-  document.addEventListener("mouseup",   () => { cursor.style.scale = "1"; });
 })();
 
 // ── 벚꽃 흩날리기 ────────────────────────────────────────────────────────
