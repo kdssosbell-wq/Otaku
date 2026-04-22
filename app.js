@@ -1192,12 +1192,16 @@ setInterval(applyTimeBackground, 60 * 1000);
   const cursor = document.getElementById("custom-cursor");
   if (!cursor) return;
 
-  let isDown = false;
+  // 터치 기기에서는 커서 완전히 숨기고 종료
+  if ("ontouchstart" in window || navigator.maxTouchPoints > 0) {
+    cursor.style.display = "none";
+    return;
+  }
 
   // 마우스 이동
   document.addEventListener("mousemove", (e) => {
-    cursor.style.left = e.clientX + "px";
-    cursor.style.top  = e.clientY + "px";
+    cursor.style.left    = e.clientX + "px";
+    cursor.style.top     = e.clientY + "px";
     cursor.style.opacity = "1";
   });
 
@@ -1205,15 +1209,9 @@ setInterval(applyTimeBackground, 60 * 1000);
   document.addEventListener("mouseleave", () => { cursor.style.opacity = "0"; });
   document.addEventListener("mouseenter", () => { cursor.style.opacity = "1"; });
 
-  // 클릭할 때 살짝 튀는 효과 (scale만 조절, base transform은 CSS에서 유지)
-  document.addEventListener("mousedown", () => {
-    isDown = true;
-    cursor.style.scale = "0.8";
-  });
-  document.addEventListener("mouseup", () => {
-    isDown = false;
-    cursor.style.scale = "1";
-  });
+  // 클릭할 때 살짝 튀는 효과
+  document.addEventListener("mousedown", () => { cursor.style.scale = "0.8"; });
+  document.addEventListener("mouseup",   () => { cursor.style.scale = "1"; });
 })();
 
 // ── 벚꽃 흩날리기 ────────────────────────────────────────────────────────
