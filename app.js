@@ -212,10 +212,10 @@ function bootstrap() {
   populateEditCategoryCheckboxes();
   bindEvents();
   setupAuthListener();
+  initNaverMap();       // 지도 먼저 초기화해야 첫 render에서 커스텀 라벨을 그리지 않음
+  initPlaceSearch();
   render();
   setupFirestoreListeners();
-  initNaverMap();
-  initPlaceSearch();
 }
 
 // ── Firebase Auth 리스너 ──────────────────────────────────────────────────
@@ -816,8 +816,10 @@ function panNaverMapToRegion() {
 }
 
 function renderAreaMap(container, activeAreaId, spots) {
-  // 네이버 지도 있으면 마커만 업데이트 (innerHTML 초기화 금지)
+  // 네이버 지도 있으면 마커만 업데이트
   if (naverMap) {
+    // 혹시 남아 있는 커스텀 지도 라벨/블롭 제거
+    container.querySelectorAll(".district-label, .map-blob, .map-pin").forEach(el => el.remove());
     panNaverMapToRegion();
     updateNaverMarkers(spots);
     return;
