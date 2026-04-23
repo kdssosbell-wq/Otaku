@@ -1084,6 +1084,89 @@ button.district-label:active { transform: scale(0.96); }
   color: var(--text);
 }
 
+/* ── 지역 라벨 + 자동감지됨 뱃지 행 ─────────────────────────── */
+.field-label-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── 자동감지됨 뱃지 ──────────────────────────────────────────── */
+.auto-tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 9px;
+  border-radius: 20px;
+  background: rgba(80, 160, 100, 0.12);
+  color: #3a8050;
+  border: 1px solid rgba(80, 160, 100, 0.28);
+  letter-spacing: 0.02em;
+}
+
+/* ── 주소 입력행 (input + 위치확인 버튼) ─────────────────────── */
+.address-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.address-input-row input {
+  flex: 1;
+  min-width: 0; /* flex 넘침 방지 */
+}
+
+/* ── 위치 확인 버튼 ──────────────────────────────────────────── */
+.geocode-btn {
+  flex-shrink: 0;
+  padding: 0 16px;
+  background: linear-gradient(135deg, var(--lavender, #c4b5f4), #9f8ee8);
+  color: #fff;
+  border: none;
+  border-radius: 16px;
+  font-weight: 700;
+  font-size: 13px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: opacity 0.18s, transform 0.12s;
+  box-shadow: 0 4px 12px rgba(159, 142, 232, 0.30);
+}
+
+.geocode-btn:hover:not(:disabled) {
+  opacity: 0.88;
+  transform: scale(1.02);
+}
+
+.geocode-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ── 지오코딩 상태 메시지 ────────────────────────────────────── */
+.geocode-status {
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.5;
+  padding: 8px 14px;
+  border-radius: 12px;
+  margin-top: -6px; /* form gap 일부 흡수 */
+}
+
+.geocode-status--loading {
+  color: var(--muted, #9b7ba8);
+  background: rgba(155, 123, 168, 0.08);
+}
+
+.geocode-status--ok {
+  color: #2e7d4f;
+  background: rgba(80, 160, 100, 0.09);
+}
+
+.geocode-status--warn {
+  color: #9a5c1a;
+  background: rgba(255, 160, 60, 0.10);
+}
+
 .checkbox-item {
   display: inline-flex;
   align-items: center;
