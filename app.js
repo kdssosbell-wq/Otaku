@@ -24,6 +24,10 @@ const CATEGORIES = [
   { id: "figure", label: "피규어"   },
   { id: "gacha",  label: "가챠"     },
   { id: "goods",  label: "굿즈샵"   },
+  { id: "etc",    label: "기타", subCategories: [
+    { id: "etc_manga", label: "만화 서적"       },
+    { id: "etc_bar",   label: "오타쿠 칵테일바" },
+  ]},
 ];
 
 const DAY_LABELS = { mon: "월", tue: "화", wed: "수", thu: "목", fri: "금", sat: "토", sun: "일" };
@@ -133,8 +137,8 @@ const DAEJEON_GU_POS = {
 const REGIONS = [
   { id: "seoul",    label: "서울",   areaIds: ["hongdae","hapjeong","sinchon","yongsan","gangnam","geondae"] },
   { id: "gyeonggi", label: "경기도", areaIds: ["suwon","osan","dongtan","pyeongtaek","cheonan"] },
-  { id: "busan",    label: "부산",   areaIds: ["busan"] },
-  { id: "daejeon",  label: "대전",   areaIds: ["daejeon"] },
+  { id: "busan",    label: "부산",   areaIds: ["busan"],   useDistricts: true },
+  { id: "daejeon",  label: "대전",   areaIds: ["daejeon"], useDistricts: true },
 ];
 
 // ── 앱 상태 ───────────────────────────────────────────────────────────────
@@ -301,16 +305,25 @@ function bindEvents() {
   elements.editForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const entryId = elements.editEntryId.value;
-    const selectedCategories = [...elements.editCategoryCheckboxes.querySelectorAll("input:checked")]
+    const selectedCategories = [...elements.editCategoryCheckboxes.querySelectorAll("input[name='editCategories']:checked")]
       .map((cb) => cb.value);
+    const selectedSubCategories = [...elements.editCategoryCheckboxes.querySelectorAll("input[name='editSubCategories']:checked")]
+      .map((cb) => cb.value);
+
+    // 기타 하위 카테고리 선택 시 "etc" 자동 추가
+    const etcSubIds = CATEGORIES.find(c => c.id === "etc")?.subCategories?.map(s => s.id) || [];
+    if (selectedSubCategories.some(s => etcSubIds.includes(s)) && !selectedCategories.includes("etc")) {
+      selectedCategories.push("etc");
+    }
     const selectedClosedDays = [...document.querySelectorAll("#editClosedDays input:checked")]
       .map((cb) => cb.value);
 
     const updatedData = {
-      name:        elements.editName.value.trim(),
-      area:        elements.editArea.value,
-      address:     elements.editAddress.value.trim(),
-      categories:  selectedCategories,
+      name:          elements.editName.value.trim(),
+      area:          elements.editArea.value,
+      address:       elements.editAddress.value.trim(),
+      categories:    selectedCategories,
+      subCategories: selectedSubCategories,
       description: elements.editDescription.value.trim(),
       hours:       elements.editHours.value.trim(),
       closedDays:  selectedClosedDays,
@@ -385,13 +398,20 @@ function bindEvents() {
     event.preventDefault();
     const form       = event.currentTarget;
     const formData   = new FormData(form);
-    const categories = formData.getAll("categories");
+    const categories    = formData.getAll("categories");
+    const subCategories = formData.getAll("subCategories");
+
+    // 기타 하위 카테고리 선택 시 "etc" 자동 추가
+    const etcSubIds = CATEGORIES.find(c => c.id === "etc")?.subCategories?.map(s => s.id) || [];
+    if (subCategories.some(s => etcSubIds.includes(s)) && !categories.includes("etc")) {
+      categories.push("etc");
+    }
 
     // 중복 매장 최종 차단
     const nameVal = (formData.get("name") || "").trim();
     if (nameVal && checkDuplicateName(nameVal)) return;
 
-    if (!categories.length) {
+    if (!categories.length && !subCategories.length) {
       window.alert("카테고리를 하나 이상 선택해 주세요.");
       return;
     }
@@ -406,6 +426,7 @@ function bindEvents() {
       address:     formData.get("address"),
       ...(isFinite(latVal) && isFinite(lngVal) ? { lat: latVal, lng: lngVal } : {}),
       categories,
+      subCategories,
       description: formData.get("description"),
       hours:       formData.get("hours") || "정보 제보 필요",
       closedDays:  formData.getAll("closedDays"),
@@ -477,13 +498,17 @@ function renderCategoryFilters() {
 
 function renderRegionFilters() {
   elements.regionFilters.innerHTML = "";
-  // 카테고리·영업중·검색어 필터를 모두 반영한 기준 목록 (지역 필터 제외)
+
   const baseList = state.approved.filter(s => {
     const matchesCat  = state.activeCategory === "all" || s.categories.includes(state.activeCategory);
     const matchesOpen = !state.onlyOpen || isOpenNow(s);
     const matchesQ    = !state.query || [s.name, areaLabel(s.area), s.address, s.description].join(" ").toLowerCase().includes(state.query);
     return matchesCat && matchesOpen && matchesQ;
   });
+
+  // ── 대분류 행 ──────────────────────────────────────
+  const regionRow = document.createElement("div");
+  regionRow.className = "region-row";
 
   REGIONS.forEach((region) => {
     const count = baseList.filter(s => region.areaIds.includes(s.area)).length;
@@ -502,24 +527,124 @@ function renderRegionFilters() {
         state.activeRegion = region.id;
         state.activeArea   = null;
       }
-      // 지역 탭 전환 시 영업중·구 필터 초기화
       state.onlyOpen = false;
       state.activeGuFilter = null;
       if (elements.openNowToggle) elements.openNowToggle.classList.remove("active");
       renderRegionFilters();
       renderApproved();
     });
-    elements.regionFilters.appendChild(btn);
+    regionRow.appendChild(btn);
   });
+  elements.regionFilters.appendChild(regionRow);
+
+  // ── 소분류 아코디언 행 ──────────────────────────────────
+  if (state.activeRegion) {
+    const activeRegionData = REGIONS.find(r => r.id === state.activeRegion);
+    if (activeRegionData) {
+      const areaRow = document.createElement("div");
+      areaRow.className = "area-row";
+
+      if (activeRegionData.useDistricts) {
+        // 부산·대전: 주소에서 구 추출해 동적 생성
+        const regionStores = baseList.filter(s => activeRegionData.areaIds.includes(s.area));
+        const districts = [...new Set(
+          regionStores.map(s => extractGu(s.address)).filter(Boolean)
+        )].sort((a, b) => a.localeCompare(b, "ko"));
+
+        districts.forEach(gu => {
+          const count = regionStores.filter(s => extractGu(s.address) === gu).length;
+          const isActive = state.activeGuFilter === gu;
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = `chip chip--sub${isActive ? " active" : ""}`;
+          btn.innerHTML = count > 0
+            ? `${gu}<span class="region-count">${count}</span>`
+            : gu;
+          btn.addEventListener("click", () => {
+            state.activeGuFilter = isActive ? null : gu;
+            state.activeArea     = null;
+            renderRegionFilters();
+            renderApproved();
+          });
+          areaRow.appendChild(btn);
+        });
+      } else {
+        // 서울·경기도: AREAS 기반
+        activeRegionData.areaIds.forEach(areaId => {
+          const area = AREAS.find(a => a.id === areaId);
+          if (!area) return;
+          const count = baseList.filter(s => s.area === areaId).length;
+          const isAreaActive = state.activeArea === areaId;
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = `chip chip--sub${isAreaActive ? " active" : ""}`;
+          btn.innerHTML = count > 0
+            ? `${area.label}<span class="region-count">${count}</span>`
+            : area.label;
+          btn.addEventListener("click", () => {
+            state.activeArea     = isAreaActive ? null : areaId;
+            state.activeGuFilter = null;
+            renderRegionFilters();
+            renderApproved();
+          });
+          areaRow.appendChild(btn);
+        });
+      }
+
+      if (areaRow.children.length) {
+        const wrap = document.createElement("div");
+        wrap.className = "area-row-wrap";
+        wrap.appendChild(areaRow);
+        elements.regionFilters.appendChild(wrap);
+      }
+    }
+  }
+}
+
+function buildCategoryItem(cat, nameAttr, subNameAttr) {
+  if (!cat.subCategories?.length) {
+    const label = document.createElement("label");
+    label.className = "checkbox-item";
+    label.innerHTML = `<input type="checkbox" name="${nameAttr}" value="${cat.id}"><span>${cat.label}</span>`;
+    return label;
+  }
+
+  // 하위 카테고리가 있는 경우 — 부모 체크박스 없이 그룹 레이블 + 항상 열린 하위 그리드
+  const wrapper = document.createElement("div");
+  wrapper.className = "category-etc-wrapper";
+
+  const groupLabel = document.createElement("span");
+  groupLabel.className = "category-group-label";
+  groupLabel.textContent = cat.label;
+  wrapper.appendChild(groupLabel);
+
+  const subGrid = document.createElement("div");
+  subGrid.className = "checkbox-sub-grid";
+
+  cat.subCategories.forEach(sub => {
+    const subLabel = document.createElement("label");
+    subLabel.className = "checkbox-item checkbox-item--sub";
+    const subInput = document.createElement("input");
+    subInput.type = "checkbox";
+    subInput.name = subNameAttr;
+    subInput.value = sub.id;
+    subLabel.appendChild(subInput);
+    const subSpan = document.createElement("span");
+    subSpan.textContent = sub.label;
+    subLabel.appendChild(subSpan);
+    subGrid.appendChild(subLabel);
+  });
+  wrapper.appendChild(subGrid);
+
+  return wrapper;
 }
 
 function renderCategoryCheckboxes() {
   elements.categoryCheckboxes.innerHTML = "";
   CATEGORIES.forEach((cat) => {
-    const label = document.createElement("label");
-    label.className = "checkbox-item";
-    label.innerHTML = `<input type="checkbox" name="categories" value="${cat.id}"><span>${cat.label}</span>`;
-    elements.categoryCheckboxes.appendChild(label);
+    elements.categoryCheckboxes.appendChild(
+      buildCategoryItem(cat, "categories", "subCategories")
+    );
   });
 }
 
@@ -549,10 +674,9 @@ function populateEditAreaOptions() {
 function populateEditCategoryCheckboxes() {
   elements.editCategoryCheckboxes.innerHTML = "";
   CATEGORIES.forEach((cat) => {
-    const label = document.createElement("label");
-    label.className = "checkbox-item";
-    label.innerHTML = `<input type="checkbox" name="editCategories" value="${cat.id}"><span>${cat.label}</span>`;
-    elements.editCategoryCheckboxes.appendChild(label);
+    elements.editCategoryCheckboxes.appendChild(
+      buildCategoryItem(cat, "editCategories", "editSubCategories")
+    );
   });
 }
 
@@ -731,16 +855,33 @@ function getSpotCoords(spot) {
 }
 
 // ── 마커 생성 HTML ─────────────────────────────────────────────────────────
-function makePinHTML(isOpen) {
-  return `<div class="nm-pin${isOpen ? " is-open" : ""}"></div>`;
+// spot.name에 가챠/가차 포함 시 PIN-2, 그 외 PIN-3 사용
+function makePinHTML(spot) {
+  const isGacha = /가챠|가차/i.test(spot.name || "");
+  const pinFile = isGacha ? "tema/PIN-2.png" : "tema/PIN-3.png";
+  return `<img src="${pinFile}" style="width:36px;height:auto;display:block;cursor:pointer;" draggable="false" alt="">`;
 }
 
 function makeInfoWindowHTML(spot) {
-  const cats = (spot.categories || [])
-    .map(c => CATEGORIES.find(x => x.id === c)?.label || c)
-    .map(l => `<span class="nm-iw__tag">${l}</span>`)
-    .join("");
-  const open     = isOpenNow(spot);
+  const allCats = [
+    ...(spot.categories || []).map(c => {
+      for (const cat of CATEGORIES) {
+        if (cat.id === c) return cat.label;
+        const sub = cat.subCategories?.find(s => s.id === c);
+        if (sub) return sub.label;
+      }
+      return c;
+    }),
+    ...(spot.subCategories || []).map(id => {
+      for (const cat of CATEGORIES) {
+        const sub = cat.subCategories?.find(s => s.id === id);
+        if (sub) return sub.label;
+      }
+      return id;
+    }),
+  ];
+  const cats = allCats.map(l => `<span class="nm-iw__tag">${l}</span>`).join("");
+  const open = isOpenNow(spot);
   const openBadge = spot.hours && spot.hours !== "정보 제보 필요"
     ? `<span class="nm-iw__badge nm-iw__badge--${open ? "open" : "close"}">${open ? "영업중" : "영업종료"}</span>`
     : "";
@@ -753,6 +894,7 @@ function makeInfoWindowHTML(spot) {
         ${spot.hours && spot.hours !== "정보 제보 필요" ? `<span>⏰ ${spot.hours}</span>` : ""}
         ${openBadge}
       </div>
+      <button class="nm-iw__detail-btn" onclick="window.__focusSpot(${JSON.stringify(spot.name)})">세부 정보 보러가기 →</button>
     </div>`;
 }
 
@@ -771,13 +913,12 @@ function updateNaverMarkers(spots) {
     const coords = getSpotCoords(spot);
     if (!coords) return;
 
-    const open   = isOpenNow(spot);
     const marker = new naver.maps.Marker({
       position: new naver.maps.LatLng(coords.lat, coords.lng),
       map:      naverMap,
       icon: {
-        content: makePinHTML(open),
-        anchor:  new naver.maps.Point(8, 22),
+        content: makePinHTML(spot),
+        anchor:  new naver.maps.Point(18, 36), // 이미지 하단 중앙
       },
       title: spot.name,
     });
@@ -792,14 +933,12 @@ function updateNaverMarkers(spots) {
     });
 
     naver.maps.Event.addListener(marker, "click", () => {
-      // 다른 창 모두 닫기
       nmMarkers.forEach(m => { if (m.infoWindow !== infoWindow) m.infoWindow.close(); });
       if (infoWindow.getMap()) {
         infoWindow.close();
       } else {
         infoWindow.open(naverMap, marker);
-        // 카드도 스크롤
-        focusSpotCard(spot.name);
+        // 스크롤은 인포창 내 "세부 정보 보러가기" 클릭 시에만 발생
       }
     });
 
@@ -962,6 +1101,7 @@ function createSpotCard(spot) {
 
   const tags = f.querySelector(".tag-row");
   spot.categories.forEach((id) => tags.appendChild(createTag(id)));
+  (spot.subCategories || []).forEach((id) => tags.appendChild(createTag(id)));
 
   // 추가 정보 (휴무일 / 전화번호 / SNS / 주차)
   const extra = f.querySelector(".spot-card__extra");
@@ -1049,9 +1189,14 @@ function createPendingCard(entry) {
 
 function createTag(categoryId) {
   const tag = document.createElement("span");
-  const cat = CATEGORIES.find((c) => c.id === categoryId);
+  let label = categoryId;
+  for (const cat of CATEGORIES) {
+    if (cat.id === categoryId) { label = cat.label; break; }
+    const sub = cat.subCategories?.find(s => s.id === categoryId);
+    if (sub) { label = sub.label; break; }
+  }
   tag.className = "tag";
-  tag.textContent = cat ? cat.label : categoryId;
+  tag.textContent = label;
   return tag;
 }
 
@@ -1182,8 +1327,13 @@ function openEditModal(entry, collection = "pending") {
   elements.editSns.value        = entry.sns   || "";
   elements.editPhone.value      = entry.phone || "";
 
-  elements.editCategoryCheckboxes.querySelectorAll("input").forEach((cb) => {
+  // 카테고리 체크 복원
+  elements.editCategoryCheckboxes.querySelectorAll("input[name='editCategories']").forEach((cb) => {
     cb.checked = (entry.categories || []).includes(cb.value);
+  });
+  // 하위 카테고리 체크 복원
+  elements.editCategoryCheckboxes.querySelectorAll("input[name='editSubCategories']").forEach((cb) => {
+    cb.checked = (entry.subCategories || []).includes(cb.value);
   });
 
   document.querySelectorAll("#editClosedDays input").forEach((cb) => {
@@ -1218,7 +1368,16 @@ function getFilteredApproved() {
     } else {
       matchesArea = true;
     }
-    const matchesCategory = state.activeCategory === "all" || spot.categories.includes(state.activeCategory);
+    // "기타" 필터: 직접 저장된 categories["etc"] 외에, 예전 데이터가 서브카테고리만 갖는 경우도 매칭
+    const etcSubIds = new Set(
+      CATEGORIES.find(c => c.id === "etc")?.subCategories?.map(s => s.id) || []
+    );
+    const matchesCategory = state.activeCategory === "all"
+      || (spot.categories || []).includes(state.activeCategory)
+      || (state.activeCategory === "etc" && (
+           (spot.subCategories || []).some(s => etcSubIds.has(s)) ||
+           (spot.categories    || []).some(s => etcSubIds.has(s))
+         ));
     const haystack = [spot.name, areaLabel(spot.area), spot.address, spot.description].join(" ").toLowerCase();
     const matchesQuery = !state.query || haystack.includes(state.query);
     const matchesOpen = !state.onlyOpen || isOpenNow(spot);
@@ -1302,6 +1461,8 @@ function focusSpotCard(name) {
     { duration: 450 }
   );
 }
+// 인포창 내 버튼에서 직접 호출할 수 있도록 전역 노출
+window.__focusSpot = focusSpotCard;
 
 function getAreaPin(areaId) {
   const area = AREAS.find((a) => a.id === areaId);
@@ -1316,7 +1477,11 @@ function areaLabel(areaId) {
 // ── 주소에서 구 추출 ──────────────────────────────────────────────────────
 function extractGu(address) {
   const m = (address || "").match(/(\S+구)/);
-  return m ? m[1] : null;
+  if (!m) return null;
+  const gu = m[1];
+  // "진구"만 기록된 경우 → 부산 주소일 때만 부산진구로 정규화
+  if (gu === "진구" && address.includes("부산")) return "부산진구";
+  return gu;
 }
 
 // ── 영업중 판별 ───────────────────────────────────────────────────────────
