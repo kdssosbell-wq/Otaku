@@ -1863,7 +1863,7 @@ function initPlaceSearch() {
 
     try {
       const res = await fetch(
-        `https://papaya-salamander-97d69e.netlify.app/.netlify/functions/naver-search?query=${encodeURIComponent(q)}`
+        `https://fancy-cell-13aanaver-search-api.kdssosbell.workers.dev?query=${encodeURIComponent(q)}`
       );
 
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
