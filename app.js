@@ -2164,14 +2164,13 @@ function initPlaceSearch() {
           const result   = addrs[0];
           const lat      = parseFloat(result.y);
           const lng      = parseFloat(result.x);
-          const fullAddr = result.roadAddress || result.jibunAddress || address;
-
           if (latInput) latInput.value = lat;
           if (lngInput) lngInput.value = lng;
           showMiniMap(lat, lng);
 
           // ④ 지역 자동 감지 — 기존 알려진 지역은 매핑, 신규 지역은 동네명 추출
-          const detected = detectAreaFromAddress(fullAddr, result.addressElements);
+          // address(원본 입력값)을 사용해야 상호명이 포함된 경우 잘못된 장소로 매칭되는 버그를 피할 수 있음
+          const detected = detectAreaFromAddress(address, result.addressElements);
 
           // region 정보도 hidden 필드에 저장 (나중에 동적 필터링에 활용)
           const regionInput = document.getElementById("coordRegion");
@@ -2246,11 +2245,11 @@ function initPlaceSearch() {
               resolve(); return;
             }
             const result = addrs[0];
-            const fullAddr = result.roadAddress || result.jibunAddress || address;
             editLatInput.value = parseFloat(result.y);
             editLngInput.value = parseFloat(result.x);
             // 지역 자동 감지 후 지역 필드에 채우기
-            const detected = detectAreaFromAddress(fullAddr, result.addressElements);
+            // address(원본 입력값)을 사용해야 상호명이 포함된 경우 잘못된 장소로 매칭되는 버그를 피할 수 있음
+            const detected = detectAreaFromAddress(address, result.addressElements);
             if (detected && editAreaInput) editAreaInput.value = detected.areaLabel;
             const areaNote = detected ? ` · 지역: ${detected.areaLabel}` : "";
             editGeocodeStatus.className   = "geocode-status geocode-status--ok";
