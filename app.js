@@ -857,8 +857,15 @@ function getSpotCoords(spot) {
 // ── 마커 생성 HTML ─────────────────────────────────────────────────────────
 // spot.name에 가챠/가차 포함 시 PIN-2, 그 외 PIN-3 사용
 function makePinHTML(spot) {
-  const isGacha = /가챠|가차/i.test(spot.name || "");
-  const pinFile = isGacha ? "tema/PIN-2.png" : "tema/PIN-3.png";
+  const cats = spot.categories    || [];
+  const subs = spot.subCategories || [];
+  let pinFile;
+
+  if (subs.includes("etc_bar")   || cats.includes("etc_bar"))   pinFile = "tema/PIN-4.png"; // 칵테일바
+  else if (subs.includes("etc_manga") || cats.includes("etc_manga")) pinFile = "tema/PIN-1.png"; // 만화 서적
+  else if (cats.includes("gacha"))                                    pinFile = "tema/PIN-2.png"; // 가챠
+  else                                                                pinFile = "tema/PIN-3.png"; // 기본
+
   return `<img src="${pinFile}" style="width:36px;height:auto;display:block;cursor:pointer;" draggable="false" alt="">`;
 }
 
