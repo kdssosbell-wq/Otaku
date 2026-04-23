@@ -92,9 +92,10 @@
         </div>
 
         <form class="submission-form" id="submissionForm">
-          <!-- 좌표 hidden 필드 -->
+          <!-- 좌표 + 지역 hidden 필드 -->
           <input type="hidden" id="coordLat" name="lat">
           <input type="hidden" id="coordLng" name="lng">
+          <input type="hidden" id="coordRegion" name="region">
 
           <label>
             매장명
@@ -103,13 +104,17 @@
           <p id="nameError" class="name-error" aria-live="polite" hidden></p>
 
           <label>
-            지역
-            <select name="area" id="submissionArea" required></select>
+            주소
+            <div class="address-input-row">
+              <input id="addressInput" name="address" type="text" maxlength="80" required placeholder="예: 서울 마포구 와우산로29길 48-14">
+              <button type="button" id="geocodeBtn" class="geocode-btn">위치 확인</button>
+            </div>
           </label>
+          <p id="geocodeStatus" class="geocode-status" hidden></p>
 
           <label>
-            주소
-            <input id="addressInput" name="address" type="text" maxlength="80" required placeholder="예: 서울 마포구 와우산로29길 48-14">
+            <span class="field-label-row">지역 <span id="areaAutoTag" class="auto-tag" hidden>✓ 자동감지됨</span></span>
+            <input type="text" name="area" id="submissionArea" maxlength="20" placeholder="예: 홍대, 동탄, 부산…" autocomplete="off">
           </label>
 
           <label>
