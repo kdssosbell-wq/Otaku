@@ -458,30 +458,78 @@ body {
   position: relative;
   z-index: 2;
   display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: nowrap;
+  flex-direction: column;
+  gap: 8px;
   width: 100%;
   max-width: 100%;
   margin: 14px 0 0;
-  padding: 6px 12px 8px;
+  padding: 8px 12px 10px;
   border: 1.5px solid rgba(255,137,181,0.18);
   border-radius: 22px;
   background: rgba(255, 248, 253, 0.88);
   backdrop-filter: blur(14px);
   box-shadow: 0 8px 20px rgba(200,100,160,0.1);
+  overflow: visible;
+}
+
+/* 대분류 행 */
+.region-row {
+  display: flex;
+  gap: 6px;
   overflow-x: auto;
   overflow-y: hidden;
   scroll-behavior: smooth;
-  scroll-snap-type: x proximity;
-  overscroll-behavior-x: contain;
-  -webkit-overflow-scrolling: touch;
-  touch-action: pan-x;
   scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.region-row::-webkit-scrollbar { display: none; }
+
+/* 소분류 아코디언 행 — 배경 없이 텍스트만 */
+.area-row-wrap {
+  position: relative;
+  overflow: hidden;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255,137,181,0.10);
+  animation: slide-down 0.18s ease;
+}
+/* 오른쪽 페이드 — 더 스크롤할 내용 있음을 암시 */
+.area-row-wrap::after {
+  content: "";
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  width: 32px;
+  background: linear-gradient(to right, transparent, rgba(255,248,253,0.92));
+  pointer-events: none;
+}
+.area-row {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 6px;
+  /* 얇은 스크롤바 — 스크롤 가능함을 시각적으로 표시 */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(180,140,200,0.28) transparent;
+}
+.area-row::-webkit-scrollbar {
+  height: 3px;
+}
+.area-row::-webkit-scrollbar-track {
+  background: transparent;
+}
+.area-row::-webkit-scrollbar-thumb {
+  background: rgba(180,140,200,0.32);
+  border-radius: 99px;
 }
 
-.map-region-switch::-webkit-scrollbar { display: none; }
+@keyframes slide-down {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 
+/* 대분류 칩 */
 .map-region-switch .chip {
   flex: 0 0 auto;
   padding: 7px 14px;
@@ -491,7 +539,6 @@ body {
   font-weight: 700;
   letter-spacing: -0.01em;
   white-space: nowrap;
-  scroll-snap-align: center;
   border-color: transparent;
 }
 
@@ -499,6 +546,47 @@ body {
   background: linear-gradient(135deg, rgba(255,137,181,0.18), rgba(196,181,244,0.18));
   border-color: var(--pink);
   color: var(--pink-strong);
+}
+
+/* 소분류 칩 — 배경/테두리 없이 텍스트만 가볍게 */
+.chip--sub {
+  flex: 0 0 auto;
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+  background: transparent;
+  color: #9a9ab0;
+  border: none;
+  border-radius: 0;
+}
+.chip--sub:hover {
+  color: #6a6a88;
+}
+.chip--sub.active {
+  color: #5a4b8a;
+  font-weight: 700;
+  position: relative;
+}
+/* 활성 상태: 텍스트 아래 짧은 밑줄 강조 */
+.chip--sub.active::after {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  left: 8px;
+  right: 8px;
+  height: 2px;
+  background: var(--lavender);
+  border-radius: 2px;
+}
+.chip--sub .region-count {
+  background: none;
+  color: #b0afc8;
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+.chip--sub.active .region-count {
+  color: #8070b8;
 }
 
 /* 대분류 매장 수 뱃지 */
@@ -668,6 +756,79 @@ body {
 
 .nm-iw__badge--open  { background: #d4f8e8; color: #1a8a4a; }
 .nm-iw__badge--close { background: #ffe8e8; color: #b83030; }
+
+.nm-iw__detail-btn {
+  display: block;
+  width: 100%;
+  margin-top: 8px;
+  padding: 6px 10px;
+  background: linear-gradient(135deg, rgba(255,137,181,0.12), rgba(196,181,244,0.12));
+  border: 1.5px solid rgba(255,137,181,0.22);
+  border-radius: 10px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--pink-strong);
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.15s ease;
+  font-family: "Pretendard", sans-serif;
+  letter-spacing: -0.01em;
+}
+.nm-iw__detail-btn:hover {
+  background: rgba(255,137,181,0.22);
+}
+
+/* ── 기타 카테고리 래퍼 — 체크박스 그리드에서 한 줄 전체 차지 ── */
+.category-etc-wrapper {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* 기타 그룹 레이블 (체크박스 없이 텍스트만) */
+.category-group-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--muted);
+  padding: 0 4px;
+  letter-spacing: 0.02em;
+}
+
+/* ── 기타 하위 카테고리 그리드 ─────────────────────────── */
+.checkbox-sub-grid {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 5px;
+  padding: 8px 10px;
+  background: rgba(196,181,244,0.05);
+  border-radius: 14px;
+  border: 1.5px solid rgba(196,181,244,0.14);
+  animation: slide-down 0.16s ease;
+}
+
+/* 하위 카테고리 체크박스 아이템 — 더 옅고 타이트하게 */
+.checkbox-item--sub {
+  padding: 7px 10px;
+  background: rgba(255, 255, 255, 0.55);
+  border-color: rgba(196,181,244,0.15);
+}
+
+.checkbox-item--sub span {
+  font-size: 0.76rem;
+  color: var(--muted);
+}
+
+.checkbox-item--sub:has(input:checked) {
+  background: rgba(196,181,244,0.10);
+  border-color: var(--lavender);
+  color: #6a5aa8;
+}
+
+.checkbox-item--sub:has(input:checked) span {
+  color: #6a5aa8;
+}
 
 /* ── 장소 검색 카드 (제보 탭) ──────────────────────────── */
 .place-search-card {
