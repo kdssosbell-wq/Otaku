@@ -935,7 +935,7 @@ function makeInfoWindowHTML(spot) {
   const cats = allCats.map(l => `<span class="nm-iw__tag">${l}</span>`).join("");
   const open = isOpenNow(spot);
   const openBadge = spot.hours && spot.hours !== "정보 제보 필요"
-    ? `<span class="nm-iw__badge nm-iw__badge--${open ? "open" : "close"}">${open ? "영업중" : "영업종료"}</span>`
+    ? `<span class="nm-iw__badge nm-iw__badge--${open ? "open" : "close"}">${open ? "영업중" : "영업 전"}</span>`
     : "";
   return `
     <div class="nm-iw">
