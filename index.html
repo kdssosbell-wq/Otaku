@@ -231,9 +231,18 @@
       <form id="editForm" autocomplete="off">
         <input type="hidden" id="editEntryId">
         <input type="hidden" id="editCollection" value="pending">
+        <input type="hidden" id="editLat">
+        <input type="hidden" id="editLng">
         <label>매장명<input id="editName" type="text" maxlength="40" required></label>
         <label>지역<select id="editArea"></select></label>
-        <label>주소<input id="editAddress" type="text" maxlength="80" required></label>
+        <label>
+          주소
+          <div class="address-input-row">
+            <input id="editAddress" type="text" maxlength="80" required>
+            <button type="button" id="editGeocodeBtn" class="geocode-btn">위치 확인</button>
+          </div>
+        </label>
+        <p id="editGeocodeStatus" class="geocode-status" hidden></p>
         <label>
           취급 카테고리
           <div class="checkbox-grid" id="editCategoryCheckboxes"></div>
