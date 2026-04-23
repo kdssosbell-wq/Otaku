@@ -1002,12 +1002,40 @@ function updateNaverMarkers(spots) {
   });
   nmMarkers.length = 0;
 
+  // ── 같은 좌표에 겹치는 마커를 원형으로 분산 ──────────────────────────
+  // 소수점 5자리(약 1m) 기준으로 그룹핑 → 2개 이상이면 반지름 0.00018° (~20m) 원형 배치
+  const coordKey  = c => `${c.lat.toFixed(5)},${c.lng.toFixed(5)}`;
+  const coordGroups = new Map(); // key → [spot, ...]
   spots.forEach(spot => {
-    const coords = getSpotCoords(spot);
-    if (!coords) return;
+    const c = getSpotCoords(spot);
+    if (!c) return;
+    const k = coordKey(c);
+    if (!coordGroups.has(k)) coordGroups.set(k, []);
+    coordGroups.get(k).push({ spot, baseCoords: c });
+  });
 
+  const SPREAD_R = 0.00018; // 분산 반지름 (위경도 단위, 약 18~20m)
+  const resolvedSpots = []; // { spot, lat, lng }
+  coordGroups.forEach((entries) => {
+    if (entries.length === 1) {
+      const { spot, baseCoords } = entries[0];
+      resolvedSpots.push({ spot, lat: baseCoords.lat, lng: baseCoords.lng });
+    } else {
+      // 2개 이상: 원형 균등 배치
+      entries.forEach(({ spot, baseCoords }, i) => {
+        const angle = (2 * Math.PI * i) / entries.length - Math.PI / 2;
+        resolvedSpots.push({
+          spot,
+          lat: baseCoords.lat + SPREAD_R * Math.cos(angle),
+          lng: baseCoords.lng + SPREAD_R * Math.sin(angle) / Math.cos(baseCoords.lat * Math.PI / 180),
+        });
+      });
+    }
+  });
+
+  resolvedSpots.forEach(({ spot, lat, lng }) => {
     const marker = new naver.maps.Marker({
-      position: new naver.maps.LatLng(coords.lat, coords.lng),
+      position: new naver.maps.LatLng(lat, lng),
       map:      naverMap,
       icon: {
         content: makePinHTML(spot),
