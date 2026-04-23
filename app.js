@@ -221,6 +221,8 @@ const elements = {
   editSns:            document.querySelector("#editSns"),
   editPhone:          document.querySelector("#editPhone"),
   editModalCancel:    document.querySelector("#editModalCancel"),
+  editLat:            document.querySelector("#editLat"),
+  editLng:            document.querySelector("#editLng"),
   // 승인된 매장 관리 목록
   openNowToggle:        document.querySelector("#openNowToggle"),
   approvedAdminList:    document.querySelector("#approvedAdminList"),
@@ -343,10 +345,13 @@ function bindEvents() {
     const selectedClosedDays = [...document.querySelectorAll("#editClosedDays input:checked")]
       .map((cb) => cb.value);
 
+    const editLatVal = parseFloat(document.getElementById("editLat")?.value || "");
+    const editLngVal = parseFloat(document.getElementById("editLng")?.value || "");
     const updatedData = {
       name:          elements.editName.value.trim(),
       area:          elements.editArea.value,
       address:       elements.editAddress.value.trim(),
+      ...(isFinite(editLatVal) && isFinite(editLngVal) ? { lat: editLatVal, lng: editLngVal } : {}),
       categories:    selectedCategories,
       subCategories: selectedSubCategories,
       description: elements.editDescription.value.trim(),
@@ -528,6 +533,10 @@ function renderCategoryFilters() {
 }
 
 function renderRegionFilters() {
+  // 하위탭 스크롤 위치 보존 (클릭 시 리렌더로 리셋되는 것 방지)
+  const prevAreaRow   = elements.regionFilters.querySelector(".area-row");
+  const savedScrollLeft = prevAreaRow ? prevAreaRow.scrollLeft : 0;
+
   elements.regionFilters.innerHTML = "";
 
   const baseList = state.approved.filter(s => {
@@ -627,6 +636,8 @@ function renderRegionFilters() {
         wrap.className = "area-row-wrap";
         wrap.appendChild(areaRow);
         elements.regionFilters.appendChild(wrap);
+        // 클릭 전 스크롤 위치 복원 (강남 클릭 후 앞으로 튀는 현상 방지)
+        areaRow.scrollLeft = savedScrollLeft;
       }
     }
   }
@@ -1416,6 +1427,20 @@ function openEditModal(entry, collection = "pending") {
   elements.editHours.value      = entry.hours || "";
   elements.editSns.value        = entry.sns   || "";
   elements.editPhone.value      = entry.phone || "";
+  // 기존 좌표 복원
+  const editLatEl = document.getElementById("editLat");
+  const editLngEl = document.getElementById("editLng");
+  if (editLatEl) editLatEl.value = isFinite(entry.lat) ? entry.lat : "";
+  if (editLngEl) editLngEl.value = isFinite(entry.lng) ? entry.lng : "";
+  // geocode 상태 초기화
+  const editStatus = document.getElementById("editGeocodeStatus");
+  if (editStatus) editStatus.hidden = true;
+  // 좌표 없는 가게는 안내 메시지 표시
+  if (editStatus && !isFinite(entry.lat)) {
+    editStatus.hidden    = false;
+    editStatus.className = "geocode-status geocode-status--warn";
+    editStatus.textContent = "이 매장은 정확한 좌표가 없어요. 주소 수정 후 '위치 확인'을 눌러 좌표를 등록하면 지도에 정확히 표시돼요.";
+  }
 
   // 카테고리 체크 복원
   elements.editCategoryCheckboxes.querySelectorAll("input[name='editCategories']").forEach((cb) => {
@@ -2123,5 +2148,63 @@ function initPlaceSearch() {
     addrInput.addEventListener("blur", runGeocode);
   }
   if (geocodeBtn) geocodeBtn.addEventListener("click", runGeocode);
+
+  // ── 수정 모달의 "위치 확인" 버튼 ─────────────────────────────────────────
+  const editGeocodeBtn    = document.getElementById("editGeocodeBtn");
+  const editGeocodeStatus = document.getElementById("editGeocodeStatus");
+  const editLatInput      = document.getElementById("editLat");
+  const editLngInput      = document.getElementById("editLng");
+  const editAddrInput     = document.getElementById("editAddress");
+
+  if (editGeocodeBtn && editAddrInput) {
+    editGeocodeBtn.addEventListener("click", async () => {
+      const address = editAddrInput.value.trim();
+      if (!address) return;
+
+      editGeocodeStatus.hidden    = false;
+      editGeocodeStatus.className = "geocode-status geocode-status--loading";
+      editGeocodeStatus.textContent = "주소 분석 중…";
+      editGeocodeBtn.disabled = true;
+
+      try {
+        await new Promise((resolve) => {
+          if (!window.naver?.maps?.Service) {
+            editGeocodeStatus.className   = "geocode-status geocode-status--warn";
+            editGeocodeStatus.textContent = "지도 서비스 준비 중이에요. 잠시 후 다시 시도해 주세요.";
+            resolve(); return;
+          }
+          naver.maps.Service.geocode({ query: address }, (gStatus, gRes) => {
+            const addrs = gRes?.v2?.addresses;
+            if (gStatus === naver.maps.Service.Status.ERROR || !addrs?.length) {
+              editGeocodeStatus.className   = "geocode-status geocode-status--warn";
+              editGeocodeStatus.textContent = "주소를 찾지 못했어요. 주소를 다시 확인해 주세요.";
+              resolve(); return;
+            }
+            const result = addrs[0];
+            editLatInput.value = parseFloat(result.y);
+            editLngInput.value = parseFloat(result.x);
+            editGeocodeStatus.className   = "geocode-status geocode-status--ok";
+            editGeocodeStatus.textContent = `📍 좌표 등록 완료 (${parseFloat(result.y).toFixed(5)}, ${parseFloat(result.x).toFixed(5)}) — 저장하면 지도에 정확히 표시돼요.`;
+            resolve();
+          });
+        });
+      } catch (err) {
+        console.error("Edit geocode error:", err);
+        editGeocodeStatus.className   = "geocode-status geocode-status--warn";
+        editGeocodeStatus.textContent = "오류가 발생했어요. 다시 시도해 주세요.";
+      } finally {
+        editGeocodeBtn.disabled = false;
+      }
+    });
+
+    // 주소 수정 시 좌표 초기화 안내
+    editAddrInput.addEventListener("input", () => {
+      if (editLatInput) editLatInput.value = "";
+      if (editLngInput) editLngInput.value = "";
+      editGeocodeStatus.hidden    = false;
+      editGeocodeStatus.className = "geocode-status geocode-status--warn";
+      editGeocodeStatus.textContent = "주소가 변경됐어요. '위치 확인'을 눌러 좌표를 새로 등록해 주세요.";
+    });
+  }
 }
 
