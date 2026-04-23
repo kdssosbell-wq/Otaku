@@ -551,7 +551,7 @@ function renderRegionFilters() {
   regionRow.className = "region-row";
 
   REGIONS.forEach((region) => {
-    const count = baseList.filter(s => region.areaIds.includes(s.area)).length;
+    const count = baseList.filter(s => region.areaIds.includes(s.area) || s.detectedRegion === region.id).length;
     const isActive = region.id === state.activeRegion;
     const btn = document.createElement("button");
     btn.type = "button";
@@ -609,11 +609,11 @@ function renderRegionFilters() {
           areaRow.appendChild(btn);
         });
       } else {
-        // 서울·경기도: AREAS 기반
+        // 서울·경기도: AREAS 기반 고정 탭
         activeRegionData.areaIds.forEach(areaId => {
           const area = AREAS.find(a => a.id === areaId);
           if (!area) return;
-          const count = baseList.filter(s => s.area === areaId).length;
+          const count = baseList.filter(s => s.area === areaId || (AREAS.find(a2=>a2.id===areaId)?.label === s.area)).length;
           const isAreaActive = state.activeArea === areaId;
           const btn = document.createElement("button");
           btn.type = "button";
@@ -623,6 +623,33 @@ function renderRegionFilters() {
             : area.label;
           btn.addEventListener("click", () => {
             state.activeArea     = isAreaActive ? null : areaId;
+            state.activeGuFilter = null;
+            renderRegionFilters();
+            renderApproved();
+          });
+          areaRow.appendChild(btn);
+        });
+
+        // 신규 동네: detectedRegion으로 이 지역에 속하지만 AREAS에 없는 area를 동적 탭으로 추가
+        const knownAreaIds  = new Set(activeRegionData.areaIds);
+        const knownLabels   = new Set(activeRegionData.areaIds.map(id => AREAS.find(a=>a.id===id)?.label).filter(Boolean));
+        const dynamicAreas  = [...new Set(
+          baseList
+            .filter(s => s.detectedRegion === activeRegionData.id && !knownAreaIds.has(s.area) && !knownLabels.has(s.area))
+            .map(s => s.area)
+        )].sort((a, b) => a.localeCompare(b, "ko"));
+
+        dynamicAreas.forEach(dynamicArea => {
+          const count = baseList.filter(s => s.area === dynamicArea).length;
+          const isAreaActive = state.activeArea === dynamicArea;
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = `chip chip--sub${isAreaActive ? " active" : ""}`;
+          btn.innerHTML = count > 0
+            ? `${dynamicArea}<span class="region-count">${count}</span>`
+            : dynamicArea;
+          btn.addEventListener("click", () => {
+            state.activeArea     = isAreaActive ? null : dynamicArea;
             state.activeGuFilter = null;
             renderRegionFilters();
             renderApproved();
@@ -1476,10 +1503,19 @@ function getFilteredApproved() {
   return state.approved.filter((spot) => {
     let matchesArea;
     if (state.activeArea) {
-      matchesArea = spot.area === state.activeArea;
+      // 소분류 선택: area ID 직접 매칭 OR 동네명(한글)이 해당 area의 label과 일치
+      const areaObj = AREAS.find(a => a.id === state.activeArea);
+      matchesArea = spot.area === state.activeArea
+        || (areaObj && spot.area === areaObj.label);
     } else if (state.activeRegion) {
       const region = REGIONS.find(r => r.id === state.activeRegion);
-      matchesArea = region ? region.areaIds.includes(spot.area) : true;
+      if (region) {
+        // 기존 알려진 area ID로 매칭 OR 신규 동네의 detectedRegion으로 매칭
+        matchesArea = region.areaIds.includes(spot.area)
+          || spot.detectedRegion === state.activeRegion;
+      } else {
+        matchesArea = true;
+      }
     } else {
       matchesArea = true;
     }
