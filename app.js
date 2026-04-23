@@ -138,7 +138,7 @@ const AREA_CENTERS = {
   geondae:    { lat: 37.5403, lng: 127.0703 },
   suwon:      { lat: 37.2636, lng: 127.0286 },
   osan:       { lat: 37.1496, lng: 127.0694 },
-  dongtan:    { lat: 37.2005, lng: 127.2222 },
+  dongtan:    { lat: 37.2005, lng: 127.0720 },
   pyeongtaek: { lat: 36.9921, lng: 127.1128 },
   cheonan:    { lat: 36.8151, lng: 127.1139 },
   busan:      { lat: 35.1796, lng: 129.0756 },
@@ -873,6 +873,23 @@ function hashToFloat(str) {
 
 function getSpotCoords(spot) {
   if (spot.lat && spot.lng) return { lat: +spot.lat, lng: +spot.lng };
+
+  // 주소에서 구를 추출해 GU_CENTERS 폴백 (대전·부산처럼 구 단위 지역)
+  const gu = extractGu(spot.address);
+  if (gu) {
+    const region = REGIONS.find(r => r.areaIds.includes(spot.area));
+    if (region) {
+      const guCenter = GU_CENTERS[region.id]?.[gu];
+      if (guCenter) {
+        const seed = spot.id || spot.name || "";
+        return {
+          lat: guCenter.lat + (hashToFloat(seed + "lat") - 0.5) * 0.003,
+          lng: guCenter.lng + (hashToFloat(seed + "lng") - 0.5) * 0.004,
+        };
+      }
+    }
+  }
+
   const center = AREA_CENTERS[spot.area];
   if (!center) return null;
   const seed = spot.id || spot.name || "";
@@ -984,29 +1001,44 @@ function updateNaverMarkers(spots) {
 // ── 지역 탭 변경 시 지도 이동 ────────────────────────────────────────────
 function panNaverMapToRegion() {
   if (!naverMap) return;
-
-  // 1순위: 구 단위 선택 (부산·대전) → 해당 구 중심으로 zoom 14
-  if (state.activeGuFilter && state.activeRegion) {
-    const c = GU_CENTERS[state.activeRegion]?.[state.activeGuFilter];
-    if (c) {
-      naverMap.morph(new naver.maps.LatLng(c.lat, c.lng), 14, { duration: 400 });
-      return;
-    }
-  }
-
-  // 2순위: 소분류 지역 선택 (서울·경기도) → 해당 동네 중심으로 zoom 15
-  if (state.activeArea) {
-    const c = AREA_CENTERS[state.activeArea];
-    if (c) {
-      naverMap.morph(new naver.maps.LatLng(c.lat, c.lng), 15, { duration: 400 });
-      return;
-    }
-  }
-
-  // 3순위: 대분류만 선택 → 지역 전체 뷰
   const view = REGION_VIEWS[state.activeRegion];
   if (!view) return;
   naverMap.morph(new naver.maps.LatLng(view.lat, view.lng), view.zoom, { duration: 400 });
+}
+
+// ── 필터된 매장 좌표에 맞춰 지도 자동 피팅 ─────────────────────────────
+function panNaverMapToSpots(spots) {
+  if (!naverMap) return;
+
+  // 하위 필터 선택된 경우: 실제 매장 위치 기준으로 지도 영역 조정
+  if (state.activeGuFilter || state.activeArea) {
+    const coords = spots.map(getSpotCoords).filter(Boolean);
+    if (coords.length > 0) {
+      if (coords.length === 1) {
+        naverMap.morph(new naver.maps.LatLng(coords[0].lat, coords[0].lng), 16, { duration: 400 });
+      } else {
+        const latLngs = coords.map(c => new naver.maps.LatLng(c.lat, c.lng));
+        const bounds = latLngs.reduce(
+          (b, ll) => b.extend(ll),
+          new naver.maps.LatLngBounds(latLngs[0], latLngs[0])
+        );
+        naverMap.fitBounds(bounds, { top: 70, right: 30, bottom: 50, left: 30 });
+      }
+      return;
+    }
+    // 매장 없으면 구/지역 중심으로 폴백
+    if (state.activeGuFilter) {
+      const c = GU_CENTERS[state.activeRegion]?.[state.activeGuFilter];
+      if (c) { naverMap.morph(new naver.maps.LatLng(c.lat, c.lng), 14, { duration: 400 }); return; }
+    }
+    if (state.activeArea) {
+      const c = AREA_CENTERS[state.activeArea];
+      if (c) { naverMap.morph(new naver.maps.LatLng(c.lat, c.lng), 15, { duration: 400 }); return; }
+    }
+  }
+
+  // 대분류만 선택된 경우: 지역 전체 뷰
+  panNaverMapToRegion();
 }
 
 function renderAreaMap(container, activeAreaId, spots) {
@@ -1014,7 +1046,7 @@ function renderAreaMap(container, activeAreaId, spots) {
   if (naverMap) {
     // 혹시 남아 있는 커스텀 지도 라벨/블롭 제거
     container.querySelectorAll(".district-label, .map-blob, .map-pin").forEach(el => el.remove());
-    panNaverMapToRegion();
+    panNaverMapToSpots(spots); // 매장 좌표 기준으로 자동 피팅
     updateNaverMarkers(spots);
     return;
   }
