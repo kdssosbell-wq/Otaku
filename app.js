@@ -901,7 +901,7 @@ function makeInfoWindowHTML(spot) {
         ${spot.hours && spot.hours !== "정보 제보 필요" ? `<span>⏰ ${spot.hours}</span>` : ""}
         ${openBadge}
       </div>
-      <button class="nm-iw__detail-btn" onclick="window.__focusSpot(${JSON.stringify(spot.name)})">세부 정보 보러가기 →</button>
+      <button class="nm-iw__detail-btn" onclick="window.__focusSpot('${spot.name.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')">세부 정보 보러가기 →</button>
     </div>`;
 }
 
