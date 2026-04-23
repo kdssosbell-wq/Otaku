@@ -1,0 +1,8 @@
+name            = "naver-search"
+main            = "worker.js"
+compatibility_date = "2025-01-01"
+
+# 시크릿은 wrangler.toml에 직접 넣지 말고
+# Cloudflare Dashboard 또는 아래 CLI 명령어로 등록:
+#   npx wrangler secret put NAVER_CLIENT_ID
+#   npx wrangler secret put NAVER_CLIENT_SECRET
