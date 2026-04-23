@@ -100,6 +100,34 @@ const AREAS = [
   },
 ];
 
+// ── 구별 네이버 지도 중심 좌표 (부산·대전) ───────────────────────────────
+const GU_CENTERS = {
+  daejeon: {
+    "동구":   { lat: 36.3467, lng: 127.4536 },
+    "중구":   { lat: 36.3254, lng: 127.4210 },
+    "서구":   { lat: 36.3551, lng: 127.3836 },
+    "유성구": { lat: 36.3793, lng: 127.3562 },
+    "대덕구": { lat: 36.3822, lng: 127.4346 },
+  },
+  busan: {
+    "부산진구": { lat: 35.1636, lng: 129.0530 },
+    "해운대구": { lat: 35.1631, lng: 129.1640 },
+    "사하구":   { lat: 35.1041, lng: 128.9746 },
+    "금정구":   { lat: 35.2432, lng: 129.0924 },
+    "남구":     { lat: 35.1361, lng: 129.0848 },
+    "동구":     { lat: 35.1801, lng: 129.0544 },
+    "연제구":   { lat: 35.1821, lng: 129.0757 },
+    "수영구":   { lat: 35.1452, lng: 129.1134 },
+    "서구":     { lat: 35.1775, lng: 129.0118 },
+    "사상구":   { lat: 35.1488, lng: 128.9934 },
+    "강서구":   { lat: 35.2118, lng: 128.9826 },
+    "기장군":   { lat: 35.2447, lng: 129.2225 },
+    "북구":     { lat: 35.1985, lng: 128.9991 },
+    "중구":     { lat: 35.1796, lng: 129.0202 },
+    "동래구":   { lat: 35.1990, lng: 129.0875 },
+  },
+};
+
 // ── 네이버 지도: 지역별 중심 좌표 ────────────────────────────────────────
 const AREA_CENTERS = {
   hongdae:    { lat: 37.5534, lng: 126.9235 },
@@ -956,6 +984,26 @@ function updateNaverMarkers(spots) {
 // ── 지역 탭 변경 시 지도 이동 ────────────────────────────────────────────
 function panNaverMapToRegion() {
   if (!naverMap) return;
+
+  // 1순위: 구 단위 선택 (부산·대전) → 해당 구 중심으로 zoom 14
+  if (state.activeGuFilter && state.activeRegion) {
+    const c = GU_CENTERS[state.activeRegion]?.[state.activeGuFilter];
+    if (c) {
+      naverMap.morph(new naver.maps.LatLng(c.lat, c.lng), 14, { duration: 400 });
+      return;
+    }
+  }
+
+  // 2순위: 소분류 지역 선택 (서울·경기도) → 해당 동네 중심으로 zoom 15
+  if (state.activeArea) {
+    const c = AREA_CENTERS[state.activeArea];
+    if (c) {
+      naverMap.morph(new naver.maps.LatLng(c.lat, c.lng), 15, { duration: 400 });
+      return;
+    }
+  }
+
+  // 3순위: 대분류만 선택 → 지역 전체 뷰
   const view = REGION_VIEWS[state.activeRegion];
   if (!view) return;
   naverMap.morph(new naver.maps.LatLng(view.lat, view.lng), view.zoom, { duration: 400 });
