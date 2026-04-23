@@ -1966,18 +1966,23 @@ function initPlaceSearch() {
   // 주소 → { area: 지역ID or 동네명, areaLabel: 표시명, region: 대분류ID } 반환
   // ※ 기존 ADDR_TO_AREA에 없는 신규 동네도 geocoding 응답에서 이름을 추출해 반환
   function detectAreaFromAddress(addr, addressElements) {
-    const sigungu = addressElements?.find(el => el.types?.includes("SIGUGUN"))?.longName ?? "";
-    const dong    = addressElements?.find(el => el.types?.includes("DONGMYUN"))?.longName ?? "";
-    const sido    = addressElements?.find(el => el.types?.includes("SIDO"))?.longName ?? "";
-    const combined = `${sido} ${sigungu} ${dong} ${addr ?? ""}`;
-    const region   = detectRegionFromSido(sido);
-
-    // 1. 기존 알려진 지역 매핑 우선 시도
+    // ① 원본 주소(addr)만으로 알려진 지역 매핑 먼저 시도
+    //    → geocoder가 잘못된 장소를 반환해도 addressElements 오염 없음
+    const addrStr = addr ?? "";
     for (const { keys, area } of ADDR_TO_AREA) {
-      if (keys.some(k => combined.includes(k))) {
+      if (keys.some(k => addrStr.includes(k))) {
+        // region은 sido 우선, 없으면 원본 주소에서 추론
+        const sido = addressElements?.find(el => el.types?.includes("SIDO"))?.longName ?? "";
+        const region = detectRegionFromSido(sido) ?? detectRegionFromSido(addrStr);
         return { area, areaLabel: areaLabel(area), region };
       }
     }
+
+    // ② 알려진 지역 없음 → addressElements 기반 신규 지역 추출
+    const sigungu = addressElements?.find(el => el.types?.includes("SIGUGUN"))?.longName ?? "";
+    const dong    = addressElements?.find(el => el.types?.includes("DONGMYUN"))?.longName ?? "";
+    const sido    = addressElements?.find(el => el.types?.includes("SIDO"))?.longName ?? "";
+    const region  = detectRegionFromSido(sido);
 
     // 2. 신규 지역: 동/읍/면 이름에서 suffix 제거해 동네명 추출
     if (dong) {
