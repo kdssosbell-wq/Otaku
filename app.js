@@ -239,7 +239,6 @@ function bootstrap() {
   renderCategoryFilters();
   renderRegionFilters();
   renderCategoryCheckboxes();
-  populateEditAreaOptions();
   populateEditCategoryCheckboxes();
   bindEvents();
   setupAuthListener();
@@ -347,9 +346,10 @@ function bindEvents() {
 
     const editLatVal = parseFloat(document.getElementById("editLat")?.value || "");
     const editLngVal = parseFloat(document.getElementById("editLng")?.value || "");
+    const editAreaId = areaIdFromText(elements.editArea.value.trim()); // "홍대"→"hongdae", "신림"→"신림"
     const updatedData = {
       name:          elements.editName.value.trim(),
-      area:          elements.editArea.value,
+      area:          editAreaId,
       address:       elements.editAddress.value.trim(),
       ...(isFinite(editLatVal) && isFinite(editLngVal) ? { lat: editLatVal, lng: editLngVal } : {}),
       categories:    selectedCategories,
@@ -360,8 +360,8 @@ function bindEvents() {
       sns:         elements.editSns.value.trim(),
       phone:       elements.editPhone.value.trim(),
       parking:     document.querySelector("#editParking input:checked")?.value ?? "",
-      distance:    areaLabel(elements.editArea.value),
-      pin:         getAreaPin(elements.editArea.value),
+      distance:    areaLabel(editAreaId),
+      pin:         getAreaPin(editAreaId),
     };
 
     const collection = elements.editCollection.value || "pending";
@@ -1421,7 +1421,7 @@ function openEditModal(entry, collection = "pending") {
   elements.editCollection.value  = collection;
   elements.editEntryId.value    = entry.id;
   elements.editName.value       = entry.name;
-  elements.editArea.value       = entry.area;
+  elements.editArea.value       = areaLabel(entry.area); // ID("hongdae") → 라벨("홍대")
   elements.editAddress.value    = entry.address;
   elements.editDescription.value = entry.description;
   elements.editHours.value      = entry.hours || "";
@@ -2155,6 +2155,7 @@ function initPlaceSearch() {
   const editLatInput      = document.getElementById("editLat");
   const editLngInput      = document.getElementById("editLng");
   const editAddrInput     = document.getElementById("editAddress");
+  const editAreaInput     = document.getElementById("editArea");
 
   if (editGeocodeBtn && editAddrInput) {
     editGeocodeBtn.addEventListener("click", async () => {
@@ -2181,10 +2182,15 @@ function initPlaceSearch() {
               resolve(); return;
             }
             const result = addrs[0];
+            const fullAddr = result.roadAddress || result.jibunAddress || address;
             editLatInput.value = parseFloat(result.y);
             editLngInput.value = parseFloat(result.x);
+            // 지역 자동 감지 후 지역 필드에 채우기
+            const detected = detectAreaFromAddress(fullAddr, result.addressElements);
+            if (detected && editAreaInput) editAreaInput.value = detected.areaLabel;
+            const areaNote = detected ? ` · 지역: ${detected.areaLabel}` : "";
             editGeocodeStatus.className   = "geocode-status geocode-status--ok";
-            editGeocodeStatus.textContent = `📍 좌표 등록 완료 (${parseFloat(result.y).toFixed(5)}, ${parseFloat(result.x).toFixed(5)}) — 저장하면 지도에 정확히 표시돼요.`;
+            editGeocodeStatus.textContent = `📍 좌표 등록 완료${areaNote} — 저장하면 지도에 정확히 표시돼요.`;
             resolve();
           });
         });
