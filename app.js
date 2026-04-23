@@ -179,8 +179,6 @@ const state = {
   viewMode:       "map",
   approved:       [],
   pending:        [],
-  draftArea:      AREAS.find((a) => a.defaultFocus)?.id || AREAS[0].id,
-  get draftPin()  { return getAreaPin(this.draftArea); },
   adminApprovedQuery: "",
   onlyOpen: false,
   activeGuFilter: null, // 대전 구 필터
@@ -239,7 +237,6 @@ function bootstrap() {
   renderCategoryFilters();
   renderRegionFilters();
   renderCategoryCheckboxes();
-  renderAreaOptions();
   populateEditAreaOptions();
   populateEditCategoryCheckboxes();
   bindEvents();
@@ -404,11 +401,6 @@ function bindEvents() {
     }
   });
 
-  // 제보 폼 지역 변경
-  elements.submissionArea.addEventListener("change", (e) => {
-    state.draftArea = e.target.value;
-  });
-
   // ── 영업중 필터 토글 ──
   elements.openNowToggle?.addEventListener("click", () => {
     state.onlyOpen = !state.onlyOpen;
@@ -444,13 +436,17 @@ function bindEvents() {
       return;
     }
 
-    const selectedArea = formData.get("area");
+    // 사용자가 입력한 지역 텍스트("홍대", "신림" 등)를 area ID로 변환
+    // 기존 알려진 지역("홍대" → "hongdae")은 ID로, 신규 지역("신림")은 텍스트 그대로 저장
+    const selectedArea = areaIdFromText(formData.get("area") || "");
+    const regionVal    = formData.get("region") || null; // geocoding에서 자동 감지된 대분류
     const latVal = parseFloat(formData.get("lat") || "");
     const lngVal = parseFloat(formData.get("lng") || "");
     const entry = {
       id:          createId(),
       name:        formData.get("name"),
       area:        selectedArea,
+      ...(regionVal ? { detectedRegion: regionVal } : {}),
       address:     formData.get("address"),
       ...(isFinite(latVal) && isFinite(lngVal) ? { lat: latVal, lng: lngVal } : {}),
       categories,
@@ -471,8 +467,15 @@ function bindEvents() {
       await db.collection("pending").doc(entry.id).set(entry);
       form.reset();
       clearNameError();
-      state.draftArea = state.activeArea;
-      elements.submissionArea.value = state.draftArea;
+      // geocode UI 초기화
+      const statusEl    = document.getElementById("geocodeStatus");
+      const areaAutoTag = document.getElementById("areaAutoTag");
+      if (statusEl)    { statusEl.hidden = true; }
+      if (areaAutoTag) { areaAutoTag.hidden = true; }
+      const previewEl   = document.getElementById("submitMapPreview");
+      if (previewEl)    { previewEl.hidden = true; }
+      const regionInput = document.getElementById("coordRegion");
+      if (regionInput)  { regionInput.value = ""; }
       if (isAdminUnlocked) {
         state.activeTab = "admin";
       } else {
@@ -1561,6 +1564,18 @@ function areaLabel(areaId) {
   return AREAS.find((a) => a.id === areaId)?.label || areaId;
 }
 
+// 사용자가 입력한 텍스트(라벨 or ID)를 area ID로 변환
+// "홍대" → "hongdae", "hongdae" → "hongdae", "신림" → "신림" (미매칭은 그대로)
+function areaIdFromText(text) {
+  if (!text) return "";
+  const t = text.trim();
+  const byId    = AREAS.find(a => a.id    === t);
+  if (byId)    return byId.id;
+  const byLabel = AREAS.find(a => a.label === t);
+  if (byLabel) return byLabel.id;
+  return t; // 서비스 외 지역은 텍스트 그대로 저장
+}
+
 // ── 주소에서 구 추출 ──────────────────────────────────────────────────────
 function extractGu(address) {
   const m = (address || "").match(/(\S+구)/);
@@ -1828,29 +1843,66 @@ function initPlaceSearch() {
     return str ? str.replace(/<[^>]*>/g, "") : "";
   }
 
-  // 도로명 주소에서 지역 ID 자동 감지
+  // 도로명 주소 → 서비스 지역 ID 자동 매핑
+  // addressElements(Geocoding 응답)를 우선 활용하고, 없으면 fullAddr 문자열로 폴백
   const ADDR_TO_AREA = [
-    { keys: ["마포구 서교동", "마포구 동교동", "마포구 연남동", "홍익대", "홍대입구"], area: "hongdae" },
-    { keys: ["마포구 합정동", "마포구 망원동", "합정동"],                              area: "hapjeong" },
-    { keys: ["서대문구 창천동", "서대문구 대현동", "신촌동"],                          area: "sinchon" },
-    { keys: ["용산구"],                                                                area: "yongsan" },
-    { keys: ["강남구", "서초구"],                                                      area: "gangnam" },
-    { keys: ["광진구 화양동", "광진구 자양동", "건대"],                                area: "geondae" },
-    { keys: ["수원시"],                                                                area: "suwon" },
-    { keys: ["오산시"],                                                                area: "osan" },
-    { keys: ["화성시 동탄", "동탄"],                                                   area: "dongtan" },
-    { keys: ["평택시"],                                                                area: "pyeongtaek" },
-    { keys: ["천안시"],                                                                area: "cheonan" },
-    { keys: ["부산"],                                                                  area: "busan" },
-    { keys: ["대전"],                                                                  area: "daejeon" },
+    // ── 서울 ──
+    { keys: ["마포구 서교동", "마포구 동교동", "마포구 연남동", "마포구 상수동", "홍익대", "홍대입구", "서교동", "동교동", "연남동", "상수동"], area: "hongdae" },
+    { keys: ["마포구 합정동", "마포구 망원동", "합정동", "망원동"],                                                                              area: "hapjeong" },
+    { keys: ["서대문구 창천동", "서대문구 대현동", "마포구 노고산동", "신촌동", "창천동", "대현동", "이화여대"],                                  area: "sinchon" },
+    { keys: ["용산구"],                                                                                                                          area: "yongsan" },
+    { keys: ["강남구", "서초구"],                                                                                                                area: "gangnam" },
+    { keys: ["광진구 화양동", "광진구 자양동", "광진구 구의동", "화양동", "자양동", "건대입구"],                                                  area: "geondae" },
+    // ── 경기 ──
+    { keys: ["수원시"],                                                                                                                          area: "suwon" },
+    { keys: ["오산시"],                                                                                                                          area: "osan" },
+    { keys: ["화성시 동탄", "동탄동", "동탄"],                                                                                                   area: "dongtan" },
+    { keys: ["평택시"],                                                                                                                          area: "pyeongtaek" },
+    { keys: ["천안시"],                                                                                                                          area: "cheonan" },
+    // ── 광역시 ──
+    { keys: ["부산광역시", "부산시", "부산"],                                                                                                    area: "busan" },
+    { keys: ["대전광역시", "대전시", "대전"],                                                                                                    area: "daejeon" },
   ];
 
-  function detectAreaFromAddress(addr) {
-    if (!addr) return null;
-    for (const { keys, area } of ADDR_TO_AREA) {
-      if (keys.some(k => addr.includes(k))) return area;
-    }
+  // 시도 → 대분류 region ID 매핑
+  function detectRegionFromSido(sido) {
+    if (!sido) return null;
+    if (sido.includes("서울"))            return "seoul";
+    if (sido.includes("경기") || sido.includes("인천") || sido.includes("충청")) return "gyeonggi";
+    if (sido.includes("부산"))            return "busan";
+    if (sido.includes("대전"))            return "daejeon";
     return null;
+  }
+
+  // 주소 → { area: 지역ID or 동네명, areaLabel: 표시명, region: 대분류ID } 반환
+  // ※ 기존 ADDR_TO_AREA에 없는 신규 동네도 geocoding 응답에서 이름을 추출해 반환
+  function detectAreaFromAddress(addr, addressElements) {
+    const sigungu = addressElements?.find(el => el.types?.includes("SIGUGUN"))?.longName ?? "";
+    const dong    = addressElements?.find(el => el.types?.includes("DONGMYUN"))?.longName ?? "";
+    const sido    = addressElements?.find(el => el.types?.includes("SIDO"))?.longName ?? "";
+    const combined = `${sido} ${sigungu} ${dong} ${addr ?? ""}`;
+    const region   = detectRegionFromSido(sido);
+
+    // 1. 기존 알려진 지역 매핑 우선 시도
+    for (const { keys, area } of ADDR_TO_AREA) {
+      if (keys.some(k => combined.includes(k))) {
+        return { area, areaLabel: areaLabel(area), region };
+      }
+    }
+
+    // 2. 신규 지역: 동/읍/면 이름에서 suffix 제거해 동네명 추출
+    if (dong) {
+      const label = dong.replace(/(동|읍|면|리)$/, "") || dong;
+      return { area: label, areaLabel: label, region };
+    }
+
+    // 3. 동 정보 없으면 구 레벨 사용
+    if (sigungu) {
+      const label = sigungu.replace(/(구|군)$/, "") || sigungu;
+      return { area: label, areaLabel: label, region };
+    }
+
+    return null; // geocoding 응답 자체에 위치 정보가 없는 극히 드문 경우
   }
 
   // 검색 실행 — Netlify Function 프록시를 통해 네이버 지역 검색 API 호출
@@ -1895,14 +1947,22 @@ function initPlaceSearch() {
           if (nameInput && !nameInput.value) nameInput.value = name;
           if (addrInput) addrInput.value = road;
 
-          // 주소에서 지역 자동 감지 → 지역 select 자동 선택
-          const detectedArea = detectAreaFromAddress(road);
-          if (detectedArea) {
-            const areaSelect = document.getElementById("submissionArea");
-            if (areaSelect) areaSelect.value = detectedArea;
+          // 주소에서 지역 자동 감지 → 지역 텍스트 입력 + geocode UI 업데이트
+          const detected    = detectAreaFromAddress(road, null);
+          const areaInput   = document.getElementById("submissionArea");
+          const statusEl    = document.getElementById("geocodeStatus");
+          const areaAutoTag = document.getElementById("areaAutoTag");
+          if (detected && areaInput) {
+            areaInput.value = detected.areaLabel;
+            if (areaAutoTag) areaAutoTag.hidden = false;
+            if (statusEl) {
+              statusEl.hidden      = false;
+              statusEl.className   = "geocode-status geocode-status--ok";
+              statusEl.textContent = `📍 ${detected.areaLabel} 지역으로 자동 감지됐어요. (직접 수정도 가능해요)`;
+            }
           }
 
-          // 좌표가 한국 범위이면 바로 저장
+          // 좌표가 한국 범위이면 바로 저장, 아니면 Geocoding으로 정밀 좌표 획득
           const validKorea = lat > 33 && lat < 40 && lng > 124 && lng < 132;
           if (validKorea) {
             if (latInput) latInput.value = lat;
@@ -1975,5 +2035,93 @@ function initPlaceSearch() {
       miniMarker.setPosition(latlng);
     }
   }
+
+  // ── 주소 직접 입력 → 자동 Geocoding ─────────────────────────────────────
+  // 사용자가 주소 필드에 직접 타이핑 후 포커스를 벗어나거나 "위치 확인" 버튼을 누르면
+  // Naver Maps Geocoding API로 정밀 좌표를 가져오고, 지역을 자동 감지한다.
+  const geocodeBtn  = document.getElementById("geocodeBtn");
+  const statusEl    = document.getElementById("geocodeStatus");
+  const areaAutoTag = document.getElementById("areaAutoTag");
+  const areaInput   = document.getElementById("submissionArea"); // 이제 text input
+
+  async function runGeocode() {
+    const address = (addrInput?.value ?? "").trim();
+    if (!address) return;
+
+    // ① 로딩 상태
+    if (statusEl) { statusEl.hidden = false; statusEl.className = "geocode-status geocode-status--loading"; statusEl.textContent = "주소 분석 중…"; }
+    if (geocodeBtn) geocodeBtn.disabled = true;
+
+    try {
+      await new Promise((resolve) => {
+        if (!window.naver?.maps?.Service) {
+          if (statusEl) { statusEl.className = "geocode-status geocode-status--warn"; statusEl.textContent = "지도 서비스 준비 중이에요. 잠시 후 다시 시도해 주세요."; }
+          resolve(); return;
+        }
+
+        naver.maps.Service.geocode({ query: address }, (gStatus, gRes) => {
+          const addrs = gRes?.v2?.addresses;
+
+          // ② 주소를 찾지 못한 경우
+          if (gStatus === naver.maps.Service.Status.ERROR || !addrs?.length) {
+            if (statusEl) { statusEl.className = "geocode-status geocode-status--warn"; statusEl.textContent = "주소를 찾지 못했어요. 지역을 직접 입력해 주세요."; }
+            if (latInput) latInput.value = "";
+            if (lngInput) lngInput.value = "";
+            if (areaAutoTag) areaAutoTag.hidden = true;
+            resolve(); return;
+          }
+
+          // ③ 좌표 저장
+          const result   = addrs[0];
+          const lat      = parseFloat(result.y);
+          const lng      = parseFloat(result.x);
+          const fullAddr = result.roadAddress || result.jibunAddress || address;
+
+          if (latInput) latInput.value = lat;
+          if (lngInput) lngInput.value = lng;
+          showMiniMap(lat, lng);
+
+          // ④ 지역 자동 감지 — 기존 알려진 지역은 매핑, 신규 지역은 동네명 추출
+          const detected = detectAreaFromAddress(fullAddr, result.addressElements);
+
+          // region 정보도 hidden 필드에 저장 (나중에 동적 필터링에 활용)
+          const regionInput = document.getElementById("coordRegion");
+          if (regionInput && detected?.region) regionInput.value = detected.region;
+
+          if (detected && areaInput) {
+            areaInput.value = detected.areaLabel; // "홍대", "신림" 등
+            if (areaAutoTag) areaAutoTag.hidden = false;
+            if (statusEl) { statusEl.className = "geocode-status geocode-status--ok"; statusEl.textContent = `📍 ${detected.areaLabel} 지역으로 자동 감지됐어요. (직접 수정도 가능해요)`; }
+          } else {
+            // geocoding은 성공했으나 위치 정보 파싱 불가 — 매우 드문 케이스
+            if (areaAutoTag) areaAutoTag.hidden = true;
+            if (statusEl) { statusEl.className = "geocode-status geocode-status--warn"; statusEl.textContent = "좌표는 등록됐어요. 지역명을 직접 입력해 주세요."; }
+          }
+
+          resolve();
+        });
+      });
+    } catch (err) {
+      console.error("Geocode error:", err);
+      if (statusEl) { statusEl.className = "geocode-status geocode-status--warn"; statusEl.textContent = "위치 분석 중 오류가 발생했어요. 지역을 직접 입력해 주세요."; }
+      if (latInput) latInput.value = "";
+      if (lngInput) lngInput.value = "";
+    } finally {
+      if (geocodeBtn) geocodeBtn.disabled = false;
+    }
+  }
+
+  // 주소 수정 시작 → 이전 상태 초기화
+  if (addrInput) {
+    addrInput.addEventListener("input", () => {
+      if (statusEl) statusEl.hidden = true;
+      if (areaAutoTag) areaAutoTag.hidden = true;
+      if (latInput) latInput.value = "";
+      if (lngInput) lngInput.value = "";
+    });
+    // 포커스 벗어날 때 자동 실행
+    addrInput.addEventListener("blur", runGeocode);
+  }
+  if (geocodeBtn) geocodeBtn.addEventListener("click", runGeocode);
 }
 
