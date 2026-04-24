@@ -1942,16 +1942,45 @@ function initPlaceSearch() {
     { keys: ["용산구"],                                                                                                                          area: "yongsan" },
     { keys: ["강남구", "서초구"],                                                                                                                area: "gangnam" },
     { keys: ["광진구 화양동", "광진구 자양동", "광진구 구의동", "화양동", "자양동", "건대입구"],                                                  area: "geondae" },
-    // ── 경기 ──
+    // ── 경기 (고정 카테고리) ──
     { keys: ["수원시"],                                                                                                                          area: "suwon" },
     { keys: ["오산시"],                                                                                                                          area: "osan" },
-    { keys: ["화성시 동탄", "동탄동", "동탄"],                                                                                                   area: "dongtan" },
+    // 동탄구 법정동 + 행정동명 기반 (화성시 안이지만 별도 카테고리)
+    // 법정동: 반송·석우·청계·영천·방교·금곡·산척·장지·오산·중·목·신·송(화성시 소속)
+    { keys: [
+        "화성시 반송동", "화성시 석우동", "화성시 청계동", "화성시 영천동",
+        "화성시 방교동", "화성시 금곡동", "화성시 산척동", "화성시 장지동",
+        "화성시 오산동", "화성시 중동",   "화성시 목동",   "화성시 신동",   "화성시 송동",
+        "동탄구 능동",
+        "동탄1동", "동탄2동", "동탄3동", "동탄4동", "동탄5동",
+        "동탄6동", "동탄7동", "동탄8동", "동탄9동", "동탄역",
+      ],                                                                                                                                        area: "dongtan" },
+    // 병점구 법정동 + 행정동명 기반 (별도 카테고리)
+    // 법정동: 진안·기산·반정·병점·반월·황계·송산·안녕(화성시 소속)
+    { keys: [
+        "화성시 진안동", "화성시 기산동", "화성시 반정동", "화성시 병점동",
+        "화성시 반월동", "화성시 황계동", "화성시 송산동", "화성시 안녕동",
+        "병점구 능동",
+        "병점1동", "병점2동", "병점역", "화산동",
+      ],                                                                                                                                        area: "병점" },
     { keys: ["평택시"],                                                                                                                          area: "pyeongtaek" },
     { keys: ["천안시"],                                                                                                                          area: "cheonan" },
     // ── 광역시 ──
     { keys: ["부산광역시", "부산시", "부산"],                                                                                                    area: "busan" },
     { keys: ["대전광역시", "대전시", "대전"],                                                                                                    area: "daejeon" },
   ];
+
+  // 경기도 시/군 → 표시명 매핑 (동탄 제외 — 별도 최우선 처리)
+  // 이 목록에 없는 시도 regex로 추출한 원문 그대로 동적 지역으로 등록됨
+  const GYEONGGI_CITY_MAP = {
+    "파주시": "파주", "안산시": "안산", "안양시": "안양", "용인시": "용인",
+    "고양시": "고양", "성남시": "성남", "부천시": "부천", "의정부시": "의정부",
+    "남양주시": "남양주", "화성시": "화성", "시흥시": "시흥", "김포시": "김포",
+    "광주시": "광주", "광명시": "광명", "군포시": "군포", "하남시": "하남",
+    "이천시": "이천", "양주시": "양주", "구리시": "구리", "안성시": "안성",
+    "포천시": "포천", "의왕시": "의왕", "여주시": "여주", "양평군": "양평",
+    "가평군": "가평", "연천군": "연천", "동두천시": "동두천",
+  };
 
   // 시도 → 대분류 region ID 매핑
   function detectRegionFromSido(sido) {
@@ -1966,37 +1995,60 @@ function initPlaceSearch() {
   // 주소 → { area: 지역ID or 동네명, areaLabel: 표시명, region: 대분류ID } 반환
   // ※ 기존 ADDR_TO_AREA에 없는 신규 동네도 geocoding 응답에서 이름을 추출해 반환
   function detectAreaFromAddress(addr, addressElements) {
-    // ① 원본 주소(addr)만으로 알려진 지역 매핑 먼저 시도
-    //    → geocoder가 잘못된 장소를 반환해도 addressElements 오염 없음
     const addrStr = addr ?? "";
+
+    // ① 원본 주소(addr)만으로 알려진 지역 매핑
+    //    → geocoder가 잘못된 장소를 반환해도 addressElements 오염 없음
+    //    → 동탄·병점은 ADDR_TO_AREA 내 법정동/행정동명으로 정밀 매칭
     for (const { keys, area } of ADDR_TO_AREA) {
       if (keys.some(k => addrStr.includes(k))) {
-        // region은 sido 우선, 없으면 원본 주소에서 추론
         const sido = addressElements?.find(el => el.types?.includes("SIDO"))?.longName ?? "";
         const region = detectRegionFromSido(sido) ?? detectRegionFromSido(addrStr);
         return { area, areaLabel: areaLabel(area), region };
       }
     }
 
-    // ② 알려진 지역 없음 → addressElements 기반 신규 지역 추출
+    // ③ 경기도/인천 주소 → 시/군 단위 추출 (동 단위보다 상위 카테고리 우선)
+    if (addrStr.includes("경기") || addrStr.includes("인천")) {
+      // 주소에서 "OO시" 또는 "OO군" 패턴 추출
+      const siMatch = addrStr.match(/([가-힣]{2,5}시|[가-힣]{2,5}군)/);
+      if (siMatch) {
+        const cityFull  = siMatch[1]; // "파주시", "안산시" 등
+        const cityLabel = GYEONGGI_CITY_MAP[cityFull] ?? cityFull.replace(/시$|군$/, "");
+        return { area: cityLabel, areaLabel: cityLabel, region: "gyeonggi" };
+      }
+    }
+
+    // ④ 알려진 지역 없음 → addressElements 기반 신규 지역 추출
     const sigungu = addressElements?.find(el => el.types?.includes("SIGUGUN"))?.longName ?? "";
     const dong    = addressElements?.find(el => el.types?.includes("DONGMYUN"))?.longName ?? "";
     const sido    = addressElements?.find(el => el.types?.includes("SIDO"))?.longName ?? "";
     const region  = detectRegionFromSido(sido);
 
-    // 2. 신규 지역: 동/읍/면 이름에서 suffix 제거해 동네명 추출
     if (dong) {
       const label = dong.replace(/(동|읍|면|리)$/, "") || dong;
       return { area: label, areaLabel: label, region };
     }
-
-    // 3. 동 정보 없으면 구 레벨 사용
     if (sigungu) {
       const label = sigungu.replace(/(구|군)$/, "") || sigungu;
       return { area: label, areaLabel: label, region };
     }
 
-    return null; // geocoding 응답 자체에 위치 정보가 없는 극히 드문 경우
+    return null;
+  }
+
+  // region ID → 표시명 (UI 피드백용)
+  function regionLabel(regionId) {
+    return REGIONS.find(r => r.id === regionId)?.label ?? regionId;
+  }
+
+  // 지역 표시 문자열 — 경기도 계열은 "경기도 > 파주" 형태로, 나머지는 그냥 areaLabel
+  function formatDetectedLabel(detected) {
+    if (!detected) return "";
+    if (detected.region === "gyeonggi") {
+      return `경기도 › ${detected.areaLabel}`;
+    }
+    return detected.areaLabel;
   }
 
   // 검색 실행 — Netlify Function 프록시를 통해 네이버 지역 검색 API 호출
@@ -2182,9 +2234,10 @@ function initPlaceSearch() {
           if (regionInput && detected?.region) regionInput.value = detected.region;
 
           if (detected && areaInput) {
-            areaInput.value = detected.areaLabel; // "홍대", "신림" 등
+            areaInput.value = detected.areaLabel; // Firestore 저장값: "파주", "홍대" 등
             if (areaAutoTag) areaAutoTag.hidden = false;
-            if (statusEl) { statusEl.className = "geocode-status geocode-status--ok"; statusEl.textContent = `📍 ${detected.areaLabel} 지역으로 자동 감지됐어요. (직접 수정도 가능해요)`; }
+            const displayLabel = formatDetectedLabel(detected); // UI용: "경기도 › 파주", "홍대" 등
+            if (statusEl) { statusEl.className = "geocode-status geocode-status--ok"; statusEl.textContent = `📍 ${displayLabel} 지역으로 자동 감지됐어요. (직접 수정도 가능해요)`; }
           } else {
             // geocoding은 성공했으나 위치 정보 파싱 불가 — 매우 드문 케이스
             if (areaAutoTag) areaAutoTag.hidden = true;
@@ -2255,8 +2308,9 @@ function initPlaceSearch() {
             // 지역 자동 감지 후 지역 필드에 채우기
             // address(원본 입력값)을 사용해야 상호명이 포함된 경우 잘못된 장소로 매칭되는 버그를 피할 수 있음
             const detected = detectAreaFromAddress(address, result.addressElements);
-            if (detected && editAreaInput) editAreaInput.value = detected.areaLabel;
-            const areaNote = detected ? ` · 지역: ${detected.areaLabel}` : "";
+            if (detected && editAreaInput) editAreaInput.value = detected.areaLabel; // Firestore 저장값
+            const displayLabel = detected ? formatDetectedLabel(detected) : null;
+            const areaNote = displayLabel ? ` · 지역: ${displayLabel}` : "";
             editGeocodeStatus.className   = "geocode-status geocode-status--ok";
             editGeocodeStatus.textContent = `📍 좌표 등록 완료${areaNote} — 저장하면 지도에 정확히 표시돼요.`;
             resolve();
