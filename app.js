@@ -169,6 +169,26 @@ const REGIONS = [
   { id: "daejeon",  label: "대전",   areaIds: ["daejeon"], useDistricts: true },
 ];
 
+// ── 경기도 동적 지역 label 목록 ───────────────────────────────────────────
+// geocoding 이전에 제보된 데이터나 detectedRegion 없이 저장된 데이터도
+// area 문자열 자체만으로 경기도 소속임을 판단하기 위한 fallback용 Set
+const GYEONGGI_AREA_LABELS = new Set([
+  "파주", "안산", "안양", "용인", "고양", "성남", "부천", "의정부",
+  "남양주", "화성", "시흥", "김포", "광주", "광명", "군포", "하남",
+  "이천", "양주", "구리", "안성", "포천", "의왕", "여주", "양평",
+  "가평", "연천", "동두천", "병점",
+]);
+
+// spot이 특정 region에 속하는지 판단 (detectedRegion 없는 구 데이터 호환)
+function spotMatchesRegion(spot, regionId) {
+  const region = REGIONS.find(r => r.id === regionId);
+  if (!region) return false;
+  if (region.areaIds.includes(spot.area)) return true;
+  if (spot.detectedRegion === regionId)   return true;
+  if (regionId === "gyeonggi" && GYEONGGI_AREA_LABELS.has(spot.area)) return true;
+  return false;
+}
+
 // ── 앱 상태 ───────────────────────────────────────────────────────────────
 const state = {
   activeTab:      "explore",
@@ -551,7 +571,7 @@ function renderRegionFilters() {
   regionRow.className = "region-row";
 
   REGIONS.forEach((region) => {
-    const count = baseList.filter(s => region.areaIds.includes(s.area) || s.detectedRegion === region.id).length;
+    const count = baseList.filter(s => spotMatchesRegion(s, region.id)).length;
     const isActive = region.id === state.activeRegion;
     const btn = document.createElement("button");
     btn.type = "button";
@@ -635,7 +655,7 @@ function renderRegionFilters() {
         const knownLabels   = new Set(activeRegionData.areaIds.map(id => AREAS.find(a=>a.id===id)?.label).filter(Boolean));
         const dynamicAreas  = [...new Set(
           baseList
-            .filter(s => s.detectedRegion === activeRegionData.id && !knownAreaIds.has(s.area) && !knownLabels.has(s.area))
+            .filter(s => spotMatchesRegion(s, activeRegionData.id) && !knownAreaIds.has(s.area) && !knownLabels.has(s.area))
             .map(s => s.area)
         )].sort((a, b) => a.localeCompare(b, "ko"));
 
@@ -1538,9 +1558,8 @@ function getFilteredApproved() {
     } else if (state.activeRegion) {
       const region = REGIONS.find(r => r.id === state.activeRegion);
       if (region) {
-        // 기존 알려진 area ID로 매칭 OR 신규 동네의 detectedRegion으로 매칭
-        matchesArea = region.areaIds.includes(spot.area)
-          || spot.detectedRegion === state.activeRegion;
+        // 기존 알려진 area ID / detectedRegion / 경기도 label fallback 으로 매칭
+        matchesArea = spotMatchesRegion(spot, state.activeRegion);
       } else {
         matchesArea = true;
       }
