@@ -6,10 +6,12 @@ const firebaseConfig = {
   storageBucket:     "otaku-map-29d8b.firebasestorage.app",
   messagingSenderId: "227268562859",
   appId:             "1:227268562859:web:ab842e7c9e3c5763628cee",
+  measurementId:     "G-FJFJZKJ37E",
 };
 firebase.initializeApp(firebaseConfig);
-const db   = firebase.firestore();
-const auth = firebase.auth();
+const db        = firebase.firestore();
+const auth      = firebase.auth();
+const analytics = firebase.analytics(); // Google Analytics 자동 page_view 수집 시작
 
 // ── 관리자 인증 상태 ────────────────────────────────────────────────────────
 let isAdminUnlocked = false;
