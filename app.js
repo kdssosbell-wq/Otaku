@@ -1732,10 +1732,15 @@ function createId() {
 function applyTimeBackground() {
   const h = new Date().getHours();
   let period;
-  if      (h >= 7  && h < 18) period = "day";     // 오전 7시 ~ 오후 6시  → background2
-  else if (h >= 18)            period = "evening"; // 오후 6시 ~ 자정      → background1
-  else                         period = "night";   // 자정 ~ 오전 7시      → background3
+  if      (h >= 7  && h < 18) period = "day";     // 오전 7시 ~ 오후 6시  → 분홍 꽃잎 + mouse.png
+  else if (h >= 18)            period = "evening"; // 오후 6시 ~ 자정      → 하얀 꽃잎 + mouse2.png (프리렌)
+  else                         period = "night";   // 자정 ~ 오전 7시      → 연보라 꽃잎 + mouse3.png (레제)
   document.documentElement.dataset.time = period;
+
+  // 시간대별 마우스 커서 교체
+  const CURSOR_MAP = { day: "tema/mouse.png", evening: "tema/mouse2.png", night: "tema/mouse3.png" };
+  const cursorImg  = document.querySelector("#custom-cursor img");
+  if (cursorImg) cursorImg.src = CURSOR_MAP[period];
 }
 applyTimeBackground();
 setInterval(applyTimeBackground, 60 * 1000);
