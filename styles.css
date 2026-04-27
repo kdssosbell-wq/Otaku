@@ -206,11 +206,34 @@ html[data-time="evening"]::after {
   animation: sakura-fall linear infinite;
 }
 
-.sakura-petal:nth-child(odd) {
+/* 낮 — 분홍 (기본값, 시간대 미지정 시에도 적용) */
+.sakura-petal:nth-child(odd),
+html[data-time="day"] .sakura-petal:nth-child(odd) {
   background: linear-gradient(135deg, #FFD6E8, #FF89B5);
 }
-.sakura-petal:nth-child(even) {
+.sakura-petal:nth-child(even),
+html[data-time="day"] .sakura-petal:nth-child(even) {
   background: linear-gradient(135deg, #FFECF4, #FFB7D5);
+  width: 8px;
+  height: 8px;
+}
+
+/* 저녁 — 하얀색 꽃잎 */
+html[data-time="evening"] .sakura-petal:nth-child(odd) {
+  background: linear-gradient(135deg, #ffffff, #ececec);
+}
+html[data-time="evening"] .sakura-petal:nth-child(even) {
+  background: linear-gradient(135deg, #ffffff, #f5f0ff);
+  width: 8px;
+  height: 8px;
+}
+
+/* 새벽 — 연보라 꽃잎 */
+html[data-time="night"] .sakura-petal:nth-child(odd) {
+  background: linear-gradient(135deg, #e4d0ff, #c0a0f0);
+}
+html[data-time="night"] .sakura-petal:nth-child(even) {
+  background: linear-gradient(135deg, #f0e6ff, #d4b8f8);
   width: 8px;
   height: 8px;
 }
