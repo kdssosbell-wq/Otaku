@@ -1630,8 +1630,14 @@ function executeSearch() {
   state.query = lower;
   renderApproved();
 
-  // 검색 결과가 없으면 팝업 표시
-  if (getFilteredApproved().length === 0) {
+  // 팝업: 지역 필터 무관하게 전체 데이터에서도 매칭 없을 때만 표시
+  // (예: 키플래닛이 동탄에 있을 때 서울 탭에서 검색해도 팝업 안 뜸)
+  const globalMatch = state.approved.some(s =>
+    s.name?.toLowerCase().includes(lower) ||
+    s.area?.toLowerCase().includes(lower) ||
+    s.address?.toLowerCase().includes(lower)
+  );
+  if (!globalMatch) {
     showNoResultPopup();
   }
 }
