@@ -1688,7 +1688,7 @@ function areaIdFromText(text) {
 
 // ── 주소에서 구 추출 ──────────────────────────────────────────────────────
 function extractGu(address) {
-  const m = (address || "").match(/(\S+구)/);
+  const m = (address || "").match(/(\S+구|\S+군)/);  // 구 단위 + 군 단위(기장군 등) 모두 추출
   if (!m) return null;
   const gu = m[1];
   // "진구"만 기록된 경우 → 부산 주소일 때만 부산진구로 정규화
