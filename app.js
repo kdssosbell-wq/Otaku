@@ -407,7 +407,15 @@ function bindEvents() {
   elements.searchInput.addEventListener("search", () => {
     if (!elements.searchInput.value) { state.query = ""; renderApproved(); }
   });
-  elements.searchButton.addEventListener("click", executeSearch);
+  elements.searchButton.addEventListener("click", () => {
+    // 클릭 피드백 애니메이션
+    const btn = elements.searchButton;
+    btn.classList.remove("btn--pulse");
+    void btn.offsetWidth; // reflow로 애니메이션 리셋
+    btn.classList.add("btn--pulse");
+    btn.addEventListener("animationend", () => btn.classList.remove("btn--pulse"), { once: true });
+    executeSearch();
+  });
 
   // ── 관리 탭 승인 매장 검색 ──
   elements.approvedAdminSearch?.addEventListener("input", (e) => {
@@ -1621,6 +1629,43 @@ function executeSearch() {
 
   state.query = lower;
   renderApproved();
+
+  // 검색 결과가 없으면 팝업 표시
+  if (getFilteredApproved().length === 0) {
+    showNoResultPopup();
+  }
+}
+
+function showNoResultPopup() {
+  const overlay = document.getElementById("noResultOverlay");
+  if (!overlay) return;
+  overlay.hidden = false;
+
+  document.getElementById("noResultReport")?.addEventListener("click", () => {
+    overlay.hidden = true;
+    state.query = "";
+    elements.searchInput.value = "";
+    renderApproved();
+    // 제보 탭으로 이동
+    document.querySelector('[data-tab-target="submit"]')?.click();
+  }, { once: true });
+
+  document.getElementById("noResultBack")?.addEventListener("click", () => {
+    overlay.hidden = true;
+    state.query = "";
+    elements.searchInput.value = "";
+    renderApproved();
+  }, { once: true });
+
+  // 오버레이 바깥 클릭 시 닫기
+  overlay.addEventListener("click", (e) => {
+    if (e.target === overlay) {
+      overlay.hidden = true;
+      state.query = "";
+      elements.searchInput.value = "";
+      renderApproved();
+    }
+  }, { once: true });
 }
 
 // ── 중복 매장명 검사 ──────────────────────────────────────────────────────
