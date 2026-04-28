@@ -429,11 +429,107 @@ body {
   font-weight: 700;
   padding: 0 18px;
   box-shadow: 0 8px 20px rgba(229,82,138,0.3);
+  transition: background 0.25s ease, transform 0.15s ease, box-shadow 0.25s ease;
 }
 
 #searchButton:hover {
   background: linear-gradient(135deg, var(--pink-strong), var(--pink));
   transform: scale(1.02);
+}
+
+#searchButton:active,
+#searchButton.btn--pressed {
+  transform: scale(0.93);
+  box-shadow: 0 3px 10px rgba(229,82,138,0.25);
+  background: linear-gradient(135deg, #c0386a, #e05288);
+}
+
+@keyframes search-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(229,82,138,0.55); }
+  60%  { box-shadow: 0 0 0 10px rgba(229,82,138,0); }
+  100% { box-shadow: 0 0 0 0 rgba(229,82,138,0); }
+}
+
+#searchButton.btn--pulse {
+  animation: search-pulse 0.45s ease-out;
+}
+
+/* ── 검색 결과 없음 팝업 ──────────────────────────────── */
+.no-result-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(30, 10, 40, 0.45);
+  backdrop-filter: blur(4px);
+  animation: fade-in 0.25s ease;
+}
+
+.no-result-overlay[hidden] { display: none; }
+
+.no-result-card {
+  background: #fff;
+  border-radius: 24px;
+  padding: 36px 28px 28px;
+  width: min(84%, 340px);
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(229,82,138,0.18);
+  animation: slide-up 0.3s cubic-bezier(0.34,1.56,0.64,1);
+}
+
+@keyframes slide-up {
+  from { transform: translateY(32px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+.no-result-emoji {
+  font-size: 2.8rem;
+  margin-bottom: 12px;
+}
+
+.no-result-title {
+  margin: 0 0 8px;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--pink-strong, #e0527e);
+}
+
+.no-result-sub {
+  margin: 0 0 24px;
+  font-size: 0.88rem;
+  color: #888;
+  line-height: 1.5;
+}
+
+.no-result-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.no-result-btn {
+  border: none;
+  border-radius: 50px;
+  padding: 13px 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.no-result-btn:active { transform: scale(0.96); opacity: 0.85; }
+
+.no-result-btn--primary {
+  background: linear-gradient(135deg, var(--pink, #f07), var(--pink-strong, #e05));
+  color: #fff;
+  box-shadow: 0 6px 18px rgba(229,82,138,0.28);
+}
+
+.no-result-btn--secondary {
+  background: #f4f0f8;
+  color: #666;
 }
 
 /* ── 칩 공통 ──────────────────────────────────────── */
