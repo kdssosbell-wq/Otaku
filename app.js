@@ -1627,6 +1627,34 @@ function executeSearch() {
     return;
   }
 
+  // 매장명 검색: 전체 데이터에서 매칭 매장 찾아서 해당 탭으로 자동 이동
+  const nameMatches = state.approved.filter(s =>
+    s.name?.toLowerCase().includes(lower)
+  );
+
+  if (nameMatches.length > 0) {
+    // 첫 번째 매칭 매장의 지역으로 탭 이동
+    const firstMatch = nameMatches[0];
+    const matchedRegion = REGIONS.find(r => spotMatchesRegion(firstMatch, r.id));
+    if (matchedRegion) {
+      state.activeRegion = matchedRegion.id;
+      // 소분류 탭도 자동 선택 (고정 area or 동적 area)
+      const areaInRegion = AREAS.find(a =>
+        a.id === firstMatch.area || a.label === firstMatch.area
+      );
+      if (areaInRegion && matchedRegion.areaIds.includes(areaInRegion.id)) {
+        state.activeArea = areaInRegion.id;
+      } else if (firstMatch.area) {
+        // 동적 지역(파주, 동탄 등 label로 저장된 경우)
+        state.activeArea = firstMatch.area;
+      } else {
+        state.activeArea = null;
+      }
+      state.activeGuFilter = null;
+      renderRegionFilters();
+    }
+  }
+
   state.query = lower;
   renderApproved();
 
