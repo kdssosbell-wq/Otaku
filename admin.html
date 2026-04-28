@@ -3,198 +3,341 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>관리자 로그인 · 오타쿠 지도</title>
+  <title>오타쿠 지도</title>
+  <meta name="description" content="각종 피규어, 가챠, 굿즈샵 정보가 모인 지도">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="오타쿠 지도">
+  <meta property="og:url" content="https://kdssosbell-wq.github.io/Otaku/">
+  <meta property="og:title" content="오타쿠 지도">
+  <meta property="og:description" content="각종 피규어, 가챠, 굿즈샵 정보가 모인 지도">
+  <meta property="og:image" content="https://i.postimg.cc/7P95SKZ3/op-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="오타쿠 지도">
+  <meta name="twitter:description" content="각종 피규어, 가챠, 굿즈샵 정보가 모인 지도">
+  <meta name="twitter:image" content="https://i.postimg.cc/7P95SKZ3/op-image.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Pretendard:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
-  <style>
-    body {
-      min-height: 100svh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: var(--bg, #0d0d10);
-      padding: 1.5rem;
-    }
-
-    .login-card {
-      width: 100%;
-      max-width: 380px;
-      background: var(--surface, #1a1a1f);
-      border: 1px solid rgba(255,255,255,.08);
-      border-radius: 20px;
-      padding: 2.5rem 2rem 2rem;
-      display: flex;
-      flex-direction: column;
-      gap: 1.25rem;
-    }
-
-    .login-card .eyebrow {
-      margin-bottom: -.5rem;
-    }
-
-    .login-card h1 {
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: 1.5rem;
-      color: var(--text, #f0f0f5);
-      margin: 0;
-    }
-
-    .login-card > p {
-      font-size: .875rem;
-      color: var(--muted, #888);
-      margin: -.5rem 0 .25rem;
-    }
-
-    .login-form {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-    }
-
-    .login-form label {
-      display: flex;
-      flex-direction: column;
-      gap: .4rem;
-      font-size: .85rem;
-      color: var(--muted, #888);
-      font-weight: 500;
-    }
-
-    .login-form input {
-      background: rgba(255,255,255,.06);
-      border: 1px solid rgba(255,255,255,.12);
-      border-radius: 10px;
-      padding: .7rem 1rem;
-      color: var(--text, #f0f0f5);
-      font-size: .95rem;
-      font-family: 'Pretendard', sans-serif;
-      transition: border-color .2s;
-      width: 100%;
-      box-sizing: border-box;
-    }
-
-    .login-form input:focus {
-      outline: none;
-      border-color: var(--accent, #ef5b2a);
-    }
-
-    .login-error {
-      font-size: .82rem;
-      color: #ff6b6b;
-      min-height: 1.2em;
-      font-weight: 500;
-    }
-
-    .login-card .primary-btn {
-      width: 100%;
-      padding: .85rem 1rem;
-      font-size: 1rem;
-    }
-
-    .login-card .primary-btn:disabled {
-      opacity: .55;
-      cursor: not-allowed;
-    }
-
-    .back-link {
-      text-align: center;
-      font-size: .82rem;
-      color: var(--muted, #888);
-      text-decoration: none;
-      display: block;
-      transition: color .2s;
-    }
-
-    .back-link:hover {
-      color: var(--text, #f0f0f5);
-    }
-  </style>
 </head>
 <body>
-  <div class="login-card">
-    <p class="eyebrow">Admin Access</p>
-    <h1>관리자 로그인</h1>
-    <p>오타쿠 지도 관리자 전용 페이지입니다.</p>
+  <div class="app-shell">
+    <header class="hero">
+      <div class="hero__badge">Otaku Spot Map</div>
+      <h1>대동덕지도 <img src="tema/mouse.png" class="hero-mouse" alt=""></h1>
+      <p>오타쿠들이 직접 제보해서 만드는 오타쿠 지도</p>
+    </header>
 
-    <form class="login-form" id="loginForm" autocomplete="on" novalidate>
-      <label>
-        이메일
-        <input id="emailInput" type="email" autocomplete="email" required placeholder="example@email.com">
-      </label>
-      <label>
-        비밀번호
-        <input id="passwordInput" type="password" autocomplete="current-password" required placeholder="비밀번호 입력">
-      </label>
-      <p class="login-error" id="loginError" aria-live="polite"></p>
-      <button class="primary-btn" type="submit" id="loginSubmitBtn">로그인</button>
-    </form>
+    <main class="phone-frame">
+      <!-- ── 지도 탭 ── -->
+      <section class="panel panel--explore active" data-panel="explore">
+        <div class="search-card">
+          <label class="sr-only" for="searchInput">매장 검색</label>
+          <input id="searchInput" type="search" placeholder="매장명, 지역명 입력">
+          <button class="ghost-btn" id="searchButton" type="button">검색</button>
+        </div>
 
-    <a class="back-link" href="index.html">← 지도로 돌아가기</a>
+        <div class="chip-row" id="categoryFilters"></div>
+
+        <section class="map-card">
+          <div class="map-card__header">
+            <div>
+              <p class="eyebrow">Custom Otaku Map</p>
+              <h2>지역별 커스텀 지도</h2>
+            </div>
+            <button class="icon-btn" id="toggleViewButton" type="button">리스트 보기</button>
+          </div>
+          <p class="map-status" id="mapStatus"></p>
+          <div class="map-region-switch" id="regionFilters"></div>
+          <div class="map-stage" id="mapStage" aria-label="커스텀 지역 지도"></div>
+        </section>
+
+        <section class="list-card">
+          <div class="list-card__header">
+            <div>
+              <p class="eyebrow">Store List</p>
+              <h2>매장 리스트</h2>
+            </div>
+            <div class="list-header-right">
+              <button class="pill pill--toggle" id="openNowToggle" type="button">영업중</button>
+              <span class="pill" id="approvedCount">0곳</span>
+            </div>
+          </div>
+          <div class="spot-list" id="approvedList"></div>
+        </section>
+      </section>
+
+      <!-- ── 제보 탭 ── -->
+      <section class="panel panel--submit" data-panel="submit">
+        <div class="section-header">
+          <p class="eyebrow">Community Submission</p>
+          <h2>매장 제보하기</h2>
+          <p>관리자가 승인하면 지도에 매장이 표시됩니다.</p>
+        </div>
+
+        <!-- 장소 검색 카드 -->
+        <div class="place-search-card">
+          <p class="eyebrow">Quick Search</p>
+          <h3>장소 검색으로 빠르게 입력</h3>
+          <p>장소명이나 주소를 검색하면 주소·좌표가 자동으로 입력됩니다.</p>
+          <div class="search-card" style="margin:0">
+            <label class="sr-only" for="placeSearchInput">장소 검색</label>
+            <input id="placeSearchInput" type="search" placeholder="예: 서울 마포구 홍대 아키바샵" autocomplete="off">
+            <button class="ghost-btn" id="placeSearchBtn" type="button">검색</button>
+          </div>
+          <div id="placeSearchResults" class="place-search-results" hidden></div>
+          <div id="submitMapPreview" hidden></div>
+        </div>
+
+        <form class="submission-form" id="submissionForm">
+          <!-- 좌표 + 지역 hidden 필드 -->
+          <input type="hidden" id="coordLat" name="lat">
+          <input type="hidden" id="coordLng" name="lng">
+          <input type="hidden" id="coordRegion" name="region">
+
+          <label>
+            매장명
+            <input id="nameInput" name="name" type="text" maxlength="40" required placeholder="예: 아키바샵 홍대점" autocomplete="off">
+          </label>
+          <p id="nameError" class="name-error" aria-live="polite" hidden></p>
+
+          <label>
+            주소
+            <div class="address-input-row">
+              <input id="addressInput" name="address" type="text" maxlength="80" required placeholder="예: 서울 마포구 와우산로29길 48-14">
+              <button type="button" id="geocodeBtn" class="geocode-btn">위치 확인</button>
+            </div>
+          </label>
+          <p id="geocodeStatus" class="geocode-status" hidden></p>
+
+          <label>
+            <span class="field-label-row">지역 <span id="areaAutoTag" class="auto-tag" hidden>✓ 자동감지됨</span></span>
+            <input type="text" name="area" id="submissionArea" maxlength="20" placeholder="예: 홍대, 동탄, 부산…" autocomplete="off">
+          </label>
+
+          <label>
+            취급 카테고리
+            <div class="checkbox-grid" id="categoryCheckboxes"></div>
+          </label>
+
+          <label>
+            한줄 설명
+            <textarea name="description" rows="4" maxlength="180" required placeholder="예: 제일복권 종류가 많고 캡슐 가챠 라인업이 자주 바뀌는 편"></textarea>
+          </label>
+
+          <label>
+            운영 정보
+            <input name="hours" type="text" maxlength="30" placeholder="예: 12:00 - 21:00">
+          </label>
+
+          <label>
+            휴무일
+            <div class="checkbox-grid checkbox-grid--days">
+              <label class="checkbox-item"><input type="checkbox" name="closedDays" value="mon"><span>월</span></label>
+              <label class="checkbox-item"><input type="checkbox" name="closedDays" value="tue"><span>화</span></label>
+              <label class="checkbox-item"><input type="checkbox" name="closedDays" value="wed"><span>수</span></label>
+              <label class="checkbox-item"><input type="checkbox" name="closedDays" value="thu"><span>목</span></label>
+              <label class="checkbox-item"><input type="checkbox" name="closedDays" value="fri"><span>금</span></label>
+              <label class="checkbox-item"><input type="checkbox" name="closedDays" value="sat"><span>토</span></label>
+              <label class="checkbox-item"><input type="checkbox" name="closedDays" value="sun"><span>일</span></label>
+            </div>
+          </label>
+
+          <label>
+            SNS
+            <input name="sns" type="text" maxlength="80" placeholder="예: @otakuspot_hongdae">
+          </label>
+
+          <label>
+            전화번호
+            <input name="phone" type="tel" maxlength="20" placeholder="예: 02-1234-5678">
+          </label>
+
+          <label>
+            주차
+            <div class="radio-group">
+              <label class="checkbox-item"><input type="radio" name="parking" value=""><span>정보 없음</span></label>
+              <label class="checkbox-item"><input type="radio" name="parking" value="available"><span>🚗 가능</span></label>
+              <label class="checkbox-item"><input type="radio" name="parking" value="unavailable"><span>🚌 권장</span></label>
+            </div>
+          </label>
+
+          <label>
+            제보자 닉네임
+            <input name="author" type="text" maxlength="20" placeholder="예: 원덕후42">
+          </label>
+
+          <button class="primary-btn" type="submit">승인 요청 보내기</button>
+        </form>
+      </section>
+
+      <!-- ── 관리 탭 ── -->
+      <section class="panel panel--admin" data-panel="admin">
+        <div class="section-header">
+          <p class="eyebrow">Admin Review</p>
+          <h2>승인 대기함</h2>
+          <p>제보 내용을 검토하고 승인, 수정, 또는 반려할 수 있습니다.</p>
+          <button class="ghost-btn admin-logout-btn" id="logoutBtn" type="button" hidden>로그아웃</button>
+        </div>
+
+        <div class="admin-summary">
+          <article>
+            <span>승인 대기</span>
+            <strong id="pendingCount">0</strong>
+          </article>
+          <article>
+            <span>승인 완료</span>
+            <strong id="approvedTotal">0</strong>
+          </article>
+        </div>
+
+        <div class="admin-list" id="pendingList"></div>
+
+        <div class="admin-section-divider"></div>
+
+        <div class="section-header">
+          <p class="eyebrow">Approved Stores</p>
+          <h2>승인된 매장 수정</h2>
+          <p>이미 승인된 매장의 정보를 수정할 수 있습니다.</p>
+        </div>
+        <div class="search-card admin-search-card">
+          <label class="sr-only" for="approvedAdminSearch">매장 검색</label>
+          <input id="approvedAdminSearch" type="search" placeholder="매장명, 지역명으로 검색">
+        </div>
+        <div class="admin-list" id="approvedAdminList"></div>
+      </section>
+    </main>
+
+    <nav class="bottom-nav" aria-label="하단 탭">
+      <button class="bottom-nav__item active" data-tab-target="explore" type="button">
+        <span>지도</span>
+      </button>
+      <button class="bottom-nav__item" data-tab-target="submit" type="button">
+        <span>제보</span>
+      </button>
+      <button class="bottom-nav__item" data-tab-target="admin" id="adminTabBtn" type="button">
+        <span>관리</span>
+      </button>
+    </nav>
   </div>
+
+  <!-- 제보 수정 모달 -->
+  <div class="admin-modal-overlay" id="editModalOverlay" role="dialog" aria-modal="true" aria-label="제보 수정">
+    <div class="admin-modal admin-modal--wide">
+      <p class="eyebrow">Edit Submission</p>
+      <h2>제보 수정</h2>
+      <form id="editForm" autocomplete="off">
+        <input type="hidden" id="editEntryId">
+        <input type="hidden" id="editCollection" value="pending">
+        <input type="hidden" id="editLat">
+        <input type="hidden" id="editLng">
+        <label>매장명<input id="editName" type="text" maxlength="40" required></label>
+        <label>지역<input type="text" id="editArea" maxlength="20" placeholder="예: 홍대, 신림, 부산…" autocomplete="off"></label>
+        <label>
+          주소
+          <div class="address-input-row">
+            <input id="editAddress" type="text" maxlength="80" required>
+            <button type="button" id="editGeocodeBtn" class="geocode-btn">위치 확인</button>
+          </div>
+        </label>
+        <p id="editGeocodeStatus" class="geocode-status" hidden></p>
+        <label>
+          취급 카테고리
+          <div class="checkbox-grid" id="editCategoryCheckboxes"></div>
+        </label>
+        <label>한줄 설명<textarea id="editDescription" rows="3" maxlength="180"></textarea></label>
+        <label>운영 정보<input id="editHours" type="text" maxlength="30"></label>
+        <label>
+          휴무일
+          <div class="checkbox-grid checkbox-grid--days" id="editClosedDays">
+            <label class="checkbox-item"><input type="checkbox" name="editClosedDays" value="mon"><span>월</span></label>
+            <label class="checkbox-item"><input type="checkbox" name="editClosedDays" value="tue"><span>화</span></label>
+            <label class="checkbox-item"><input type="checkbox" name="editClosedDays" value="wed"><span>수</span></label>
+            <label class="checkbox-item"><input type="checkbox" name="editClosedDays" value="thu"><span>목</span></label>
+            <label class="checkbox-item"><input type="checkbox" name="editClosedDays" value="fri"><span>금</span></label>
+            <label class="checkbox-item"><input type="checkbox" name="editClosedDays" value="sat"><span>토</span></label>
+            <label class="checkbox-item"><input type="checkbox" name="editClosedDays" value="sun"><span>일</span></label>
+          </div>
+        </label>
+        <label>SNS<input id="editSns" type="text" maxlength="80"></label>
+        <label>전화번호<input id="editPhone" type="tel" maxlength="20"></label>
+        <label>
+          주차
+          <div class="radio-group" id="editParking">
+            <label class="checkbox-item"><input type="radio" name="editParking" value=""><span>정보 없음</span></label>
+            <label class="checkbox-item"><input type="radio" name="editParking" value="available"><span>🚗 가능</span></label>
+            <label class="checkbox-item"><input type="radio" name="editParking" value="unavailable"><span>🚌 권장</span></label>
+          </div>
+        </label>
+        <div class="admin-modal__actions">
+          <button type="button" class="ghost-btn" id="editModalCancel">취소</button>
+          <button type="submit" class="primary-btn">저장</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 매장 카드 템플릿 -->
+  <template id="spotCardTemplate">
+    <article class="spot-card">
+      <button class="spot-card__toggle" type="button">
+        <h3></h3>
+        <span class="spot-card__chevron">›</span>
+      </button>
+      <div class="spot-card__body">
+        <div class="spot-card__addr-row">
+          <p class="spot-card__meta"></p>
+          <button class="addr-copy-btn" type="button" aria-label="주소 복사">복사</button>
+        </div>
+        <p class="spot-card__desc"></p>
+        <div class="tag-row"></div>
+        <div class="spot-card__foot">
+          <span class="spot-card__hours"></span>
+          <span class="spot-card__author"></span>
+        </div>
+        <div class="spot-card__extra"></div>
+      </div>
+    </article>
+  </template>
+
+  <!-- 관리 대기 카드 템플릿 -->
+  <template id="pendingCardTemplate">
+    <article class="pending-card">
+      <div class="pending-card__head">
+        <div>
+          <h3></h3>
+          <p class="pending-card__meta"></p>
+        </div>
+      </div>
+      <p class="pending-card__desc"></p>
+      <p class="pending-card__coords"></p>
+      <div class="tag-row"></div>
+      <div class="pending-card__actions">
+        <button class="ghost-btn js-reject" type="button">반려</button>
+        <button class="ghost-btn js-edit" type="button">수정</button>
+        <button class="primary-btn js-approve" type="button">승인</button>
+      </div>
+    </article>
+  </template>
+
+  <!-- 커스텀 커서 -->
+  <div id="custom-cursor" aria-hidden="true">
+    <img src="tema/mouse.png" alt="" draggable="false">
+  </div>
+
+  <!-- 벚꽃 컨테이너 -->
+  <div id="sakura-container" aria-hidden="true"></div>
+
+  <!-- Naver Maps API -->
+  <script type="text/javascript" src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=hm92gsoco8&submodules=geocoder"></script>
 
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-  <script>
-    const firebaseConfig = {
-      apiKey:            "AIzaSyDXHbzcKG9hFFLTHWbwWai0nemhTNJaVOc",
-      authDomain:        "otaku-map-29d8b.firebaseapp.com",
-      projectId:         "otaku-map-29d8b",
-      storageBucket:     "otaku-map-29d8b.firebasestorage.app",
-      messagingSenderId: "227268562859",
-      appId:             "1:227268562859:web:ab842e7c9e3c5763628cee",
-    };
-    firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-
-    // 이미 로그인된 경우 바로 이동
-    auth.onAuthStateChanged((user) => {
-      if (user) {
-        window.location.href = "index.html#admin";
-      }
-    });
-
-    const form       = document.getElementById("loginForm");
-    const errEl      = document.getElementById("loginError");
-    const submitBtn  = document.getElementById("loginSubmitBtn");
-
-    form.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const email    = document.getElementById("emailInput").value.trim();
-      const password = document.getElementById("passwordInput").value;
-      errEl.textContent = "";
-      submitBtn.disabled = true;
-      submitBtn.textContent = "로그인 중…";
-
-      try {
-        await auth.signInWithEmailAndPassword(email, password);
-        // 성공 → 관리 탭으로 이동
-        window.location.href = "index.html#admin";
-      } catch (err) {
-        const code = err.code || "";
-        if (
-          code === "auth/wrong-password" ||
-          code === "auth/user-not-found" ||
-          code === "auth/invalid-credential" ||
-          code === "auth/invalid-email"
-        ) {
-          errEl.textContent = "이메일 또는 비밀번호가 올바르지 않습니다.";
-        } else if (code === "auth/too-many-requests") {
-          errEl.textContent = "로그인 시도가 너무 많습니다. 잠시 후 다시 시도해 주세요.";
-        } else {
-          errEl.textContent = "로그인 중 오류가 발생했습니다.";
-          console.error(err);
-        }
-        submitBtn.disabled = false;
-        submitBtn.textContent = "로그인";
-      }
-    });
-
-    // 입력 중 에러 메시지 지우기
-    document.getElementById("emailInput").addEventListener("input", () => { errEl.textContent = ""; });
-    document.getElementById("passwordInput").addEventListener("input", () => { errEl.textContent = ""; });
-  </script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics-compat.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
