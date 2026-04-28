@@ -2054,7 +2054,14 @@ function initPlaceSearch() {
     const sido    = addressElements?.find(el => el.types?.includes("SIDO"))?.longName ?? "";
     const region  = detectRegionFromSido(sido);
 
+    // ⑤ 도로명 주소라 원본에 동명이 없는 경우 → geocoder가 돌려준 dong으로 2차 매핑 시도
+    //    예: "마포구 양화로 186" → geocoder DONGMYUN = "동교동" → 홍대로 매칭
     if (dong) {
+      for (const { keys, area: mappedArea } of ADDR_TO_AREA) {
+        if (keys.some(k => dong.includes(k) || k === dong)) {
+          return { area: mappedArea, areaLabel: areaLabel(mappedArea), region };
+        }
+      }
       const label = dong.replace(/(동|읍|면|리)$/, "") || dong;
       return { area: label, areaLabel: label, region };
     }
