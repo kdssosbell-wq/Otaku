@@ -1737,10 +1737,13 @@ function applyTimeBackground() {
   else                         period = "night";   // 자정 ~ 오전 7시      → 연보라 꽃잎 + mouse3.png (레제)
   document.documentElement.dataset.time = period;
 
-  // 시간대별 마우스 커서 교체
+  // 시간대별 마우스 커서 + 타이틀 캐릭터 교체
   const CURSOR_MAP = { day: "tema/mouse.png", evening: "tema/mouse2.png", night: "tema/mouse3.png" };
+  const src        = CURSOR_MAP[period];
   const cursorImg  = document.querySelector("#custom-cursor img");
-  if (cursorImg) cursorImg.src = CURSOR_MAP[period];
+  const heroImg    = document.querySelector(".hero-mouse");
+  if (cursorImg) cursorImg.src = src;
+  if (heroImg)   heroImg.src   = src;
 }
 applyTimeBackground();
 setInterval(applyTimeBackground, 60 * 1000);
