@@ -330,6 +330,19 @@
   <!-- 벚꽃 컨테이너 -->
   <div id="sakura-container" aria-hidden="true"></div>
 
+  <!-- 검색 결과 없음 팝업 -->
+  <div id="noResultOverlay" class="no-result-overlay" hidden aria-modal="true" role="dialog">
+    <div class="no-result-card">
+      <div class="no-result-emoji">🌸</div>
+      <p class="no-result-title">아직 제보가 없어요ㅠㅠ</p>
+      <p class="no-result-sub">직접 제보해서 첫 매장을 추가해보세요!</p>
+      <div class="no-result-actions">
+        <button type="button" class="no-result-btn no-result-btn--primary" id="noResultReport">제보하기</button>
+        <button type="button" class="no-result-btn no-result-btn--secondary" id="noResultBack">다시 지도로 돌아가기</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Naver Maps API -->
   <script type="text/javascript" src="https://oapi.map.naver.com/openapi/v3/maps.js?ncpKeyId=hm92gsoco8&submodules=geocoder"></script>
 
